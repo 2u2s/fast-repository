@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fast-repository"
+version = "0.1.0"
+description = "Interface-first repository pattern for FastAPI + SQLAlchemy. Declare the interface, get the implementation for free."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "2u2s", email = "2u2s.hello@google.com" }]
+requires-python = ">=3.10"
+dependencies = [
+  "sqlalchemy[asyncio]>=2.0",
+  "fastapi-pagination>=0.12",
+]
+keywords = [
+  "fastapi",
+  "sqlalchemy",
+  "repository",
+  "repository-pattern",
+  "crud",
+  "clean-architecture",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Framework :: FastAPI",
+  "Topic :: Database",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/2u2s/fast-repository"
+
+[dependency-groups]
+dev = [
+  "aiosqlite>=0.21",
+  "pytest>=9.0.0",
+  "pytest-asyncio>=0.26",
+  "ruff>=0.15.16",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+  "B",
+  "D",
+  "E",
+  "F",
+  "I",
+  "SIM",
+  "UP",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true

@@ -1,0 +1,91 @@
+# fast-repository
+
+Interface-first repository pattern for FastAPI + SQLAlchemy.
+
+Declare the repository interface, get the implementation for free.
+
+## Why
+
+A repository keeps your domain layer depending on abstractions, but writing
+the same CRUD implementation for every entity is boilerplate.
+`fast-repository` removes that boilerplate while keeping the pattern intact:
+
+```python
+from abc import ABC
+
+from fast_repository import AbstractCRUDRepository, CRUDRepository
+
+# Domain layer: depend on this interface.
+class AbstractUserRepository(AbstractCRUDRepository[User], ABC): ...
+
+# Infrastructure layer: zero boilerplate, all CRUD methods provided.
+class UserRepository(CRUDRepository[User], AbstractUserRepository): ...
+```
+
+The entity class is captured from the generic argument (`CRUDRepository[User]`)
+at class-definition time — no constructor wiring, no metaclass tricks to learn.
+
+## Installation
+
+```bash
+pip install fast-repository
+```
+
+Requires Python 3.12+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
+
+## Usage
+
+```python
+repo = UserRepository(session)  # AsyncSession
+
+await repo.find(1)                                # SELECT ... WHERE id = 1
+await repo.find_all(status="active")              # ... WHERE status = 'active'
+await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
+await repo.find_all(age__ge=18, name__like="K%") # operator suffixes
+await repo.find_all_paginated(params=Params(page=1, size=50), status="active")
+
+await repo.save(user)
+await repo.save_all(users)
+await repo.delete(user)
+await repo.delete_all(users)
+```
+
+### Filter syntax
+
+| Keyword                                 | SQL                     |
+|-----------------------------------------|-------------------------|
+| `column=value`                          | `column = value`        |
+| `column__in=[a, b]`                     | `column IN (a, b)`      |
+| `column__gt` / `__ge` / `__lt` / `__le` | `>` / `>=` / `<` / `<=` |
+| `column__like` / `__ilike`              | `LIKE` / `ILIKE`        |
+| `column__is=None`                       | `IS NULL`               |
+
+Unknown columns and operators raise `InvalidFilterError` instead of being
+silently ignored, so a typo can never return unfiltered data.
+
+### Customizing queries
+
+Declare a base `stmt` to change relationship loading or apply a default
+filter to every read. Pass it as a class keyword argument:
+
+```python
+class UserRepository(
+    CRUDRepository[User],
+    stmt=select(User).options(selectinload(User.posts)),
+):
+    ...
+```
+
+When omitted, reads default to `select(User)`. For runtime customization you
+can also assign `self.stmt` on an instance.
+
+## Roadmap
+
+- Sync `Session` support
+- Soft-delete support (opt-in)
+- `with_for_update` row-locking options on `find`
+- Composite primary keys
+
+## License
+
+MIT
