@@ -1,12 +1,14 @@
 """Transport-agnostic logic shared by the sync and async repositories.
 
 This module holds everything that does not touch the database session: entity
-capture, primary-key resolution, and statement building. The concrete
-repositories add the thin execution layer that runs the statements.
+capture, primary-key resolution, soft-delete bookkeeping, and statement
+building. The concrete repositories add the thin execution layer that runs the
+statements.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -42,12 +44,21 @@ class _BaseCRUDRepository(Generic[EntityT]):
     """
 
     _entity_cls: ClassVar[type[DeclarativeBase]]
+    _soft_delete_column: ClassVar[str | None] = None
     stmt: ClassVar[Select[tuple[Any]]]
 
     def __init_subclass__(
-        cls, stmt: Select[tuple[Any]] | None = None, **kwargs: Any
+        cls,
+        stmt: Select[tuple[Any]] | None = None,
+        soft_delete: str | InstrumentedAttribute[Any] | None = None,
+        **kwargs: Any,
     ) -> None:
-        """Capture the entity class and base statement from the subclass."""
+        """Capture the entity class, base statement, and soft-delete column.
+
+        ``soft_delete`` may be a column name or the mapped attribute itself
+        (e.g. ``Article.deleted_at``); a mapped attribute is normalized to its
+        column name.
+        """
         super().__init_subclass__(**kwargs)
         for base in getattr(cls, "__orig_bases__", cls.__bases__):
             origin = get_origin(base)
@@ -61,14 +72,27 @@ class _BaseCRUDRepository(Generic[EntityT]):
             cls.stmt = stmt
         elif not hasattr(cls, "stmt") and hasattr(cls, "_entity_cls"):
             cls.stmt = select(cls._entity_cls)
+        if soft_delete is not None:
+            cls._soft_delete_column = (
+                soft_delete if isinstance(soft_delete, str) else soft_delete.key
+            )
 
     def _ensure_entity_bound(self) -> None:
-        """Raise if the repository was subclassed without a concrete entity."""
+        """Raise if the repository is missing an entity or misconfigured.
+
+        Raises:
+            TypeError: If the class was subclassed without a concrete entity.
+            ValueError: If ``soft_delete`` names a column that is not a mapped
+                datetime or boolean column of the entity.
+
+        """
         if not hasattr(type(self), "_entity_cls"):
             raise TypeError(
                 f"{type(self).__name__} must subclass a CRUD repository with a "
                 "concrete entity, e.g. CRUDRepository[User]."
             )
+        if self._soft_delete_column is not None:
+            self._alive_condition()  # validate the configured column eagerly
 
     @property
     def _pks(self) -> tuple[InstrumentedAttribute[Any], ...]:
@@ -79,11 +103,53 @@ class _BaseCRUDRepository(Generic[EntityT]):
             for column in mapper.primary_key
         )
 
+    def _soft_delete_attr(self) -> InstrumentedAttribute[Any]:
+        """The mapped attribute backing soft deletion.
+
+        Only call when ``_soft_delete_column`` is set.
+        """
+        column = self._soft_delete_column
+        mapper = inspect(self._entity_cls).mapper
+        if column not in mapper.column_attrs:
+            raise ValueError(
+                f"soft_delete column {column!r} is not a mapped column of "
+                f"{self._entity_cls.__name__}."
+            )
+        return mapper.column_attrs[column].class_attribute
+
+    def _alive_condition(self) -> ColumnElement[bool] | None:
+        """Where-condition selecting non-deleted rows, or None when disabled."""
+        if self._soft_delete_column is None:
+            return None
+        attr = self._soft_delete_attr()
+        python_type = attr.type.python_type
+        if issubclass(python_type, bool):
+            return attr.is_(False)
+        if issubclass(python_type, datetime):
+            return attr.is_(None)
+        raise ValueError(
+            f"soft_delete column {self._soft_delete_column!r} must be a datetime "
+            f"or boolean column of {self._entity_cls.__name__}."
+        )
+
+    def _soft_delete_value(self) -> Any:
+        """The value written to the soft-delete column to mark a row deleted."""
+        attr = self._soft_delete_attr()
+        python_type = attr.type.python_type
+        if issubclass(python_type, bool):
+            return True
+        return datetime.now(timezone.utc)
+
+    def _mark_deleted(self, entity: EntityT) -> None:
+        """Set the soft-delete column on an entity in place."""
+        setattr(entity, self._soft_delete_column, self._soft_delete_value())
+
     def _find_statement(
         self,
         pk: Any,
         keys: dict[str, Any],
         with_for_update: bool | DbLockInfo,
+        with_deleted: bool,
     ) -> Select[tuple[Any]]:
         """Build the select for a primary-key lookup, with optional row lock."""
         pk_attrs = self._pks
@@ -109,7 +175,8 @@ class _BaseCRUDRepository(Generic[EntityT]):
             )
         else:
             condition = pk_attrs[0] == pk
-        stmt = self.stmt.where(condition)
+        conditions = [condition, *self._alive_conditions(with_deleted)]
+        stmt = self.stmt.where(*conditions)
         if with_for_update is not False:
             options: dict[str, Any] = (
                 {} if with_for_update is True else dict(with_for_update)
@@ -121,9 +188,14 @@ class _BaseCRUDRepository(Generic[EntityT]):
         self,
         criteria: tuple[ColumnElement[bool], ...],
         filters: dict[str, Any],
+        with_deleted: bool,
     ) -> Select[tuple[Any]]:
         """Build the select for a filtered collection read."""
-        conditions = (*criteria, *build_conditions(self._entity_cls, filters))
+        conditions = (
+            *criteria,
+            *build_conditions(self._entity_cls, filters),
+            *self._alive_conditions(with_deleted),
+        )
         stmt = self.stmt
         if conditions:
             stmt = stmt.where(*conditions)
@@ -133,10 +205,22 @@ class _BaseCRUDRepository(Generic[EntityT]):
         self,
         criteria: tuple[ColumnElement[bool], ...],
         filters: dict[str, Any],
+        with_deleted: bool,
     ) -> Select[tuple[Any]]:
         """Build the select for a paginated read, ordered by primary key."""
-        conditions = (*criteria, *build_conditions(self._entity_cls, filters))
+        conditions = (
+            *criteria,
+            *build_conditions(self._entity_cls, filters),
+            *self._alive_conditions(with_deleted),
+        )
         stmt = self.stmt.order_by(*self._pks)
         if conditions:
             stmt = stmt.where(*conditions)
         return stmt
+
+    def _alive_conditions(self, with_deleted: bool) -> tuple[ColumnElement[bool], ...]:
+        """The non-deleted filter as a tuple, empty when it does not apply."""
+        if with_deleted:
+            return ()
+        alive = self._alive_condition()
+        return () if alive is None else (alive,)

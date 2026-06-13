@@ -44,6 +44,7 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         pk: Any = None,
         *,
         with_for_update: bool | DbLockInfo = False,
+        with_deleted: bool = False,
         **keys: Any,
     ) -> EntityT | None:
         """Find an entity by its primary key.
@@ -59,6 +60,8 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
                 (the default) reads without a lock; ``True`` locks with a plain
                 ``FOR UPDATE``; a mapping is forwarded to
                 ``Select.with_for_update``.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **keys (Any): Primary-key values named by their column, used for
                 composite keys.
 
@@ -69,7 +72,10 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
 
     @abstractmethod
     async def find_all(
-        self, *criteria: ColumnElement[bool], **filters: Any
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
     ) -> list[EntityT]:
         """Find all entities matching the given criteria and filters.
 
@@ -82,6 +88,8 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
 
         Args:
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -97,6 +105,7 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
         """Find a page of entities matching the given criteria and filters.
@@ -106,6 +115,8 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
                 they are resolved from the current FastAPI request context.
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
                 ``find_all``.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -149,11 +160,18 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    async def delete(self, entity: EntityT, *, autocommit: bool = True) -> None:
+    async def delete(
+        self, entity: EntityT, *, hard: bool = False, autocommit: bool = True
+    ) -> None:
         """Delete an entity.
+
+        Soft-deletes when the repository has soft-delete enabled, otherwise
+        hard-deletes. Pass ``hard=True`` to force a hard delete regardless.
 
         Args:
             entity (EntityT): The entity to delete.
+            hard (bool): Force a physical delete even when soft-delete is
+                enabled.
             autocommit (bool): When True, commit the transaction. When False,
                 only flush, leaving the transaction open for the caller to
                 commit.
@@ -162,12 +180,21 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
 
     @abstractmethod
     async def delete_all(
-        self, entities: Sequence[EntityT], *, autocommit: bool = True
+        self,
+        entities: Sequence[EntityT],
+        *,
+        hard: bool = False,
+        autocommit: bool = True,
     ) -> None:
         """Delete multiple entities.
 
+        Soft-deletes when the repository has soft-delete enabled, otherwise
+        hard-deletes. Pass ``hard=True`` to force a hard delete regardless.
+
         Args:
             entities (Sequence[EntityT]): The entities to delete.
+            hard (bool): Force a physical delete even when soft-delete is
+                enabled.
             autocommit (bool): When True, commit the transaction. When False,
                 only flush, leaving the transaction open for the caller to
                 commit.
@@ -201,6 +228,7 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         pk: Any = None,
         *,
         with_for_update: bool | DbLockInfo = False,
+        with_deleted: bool = False,
         **keys: Any,
     ) -> EntityT | None:
         """Find an entity by its primary key.
@@ -216,6 +244,8 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
                 (the default) reads without a lock; ``True`` locks with a plain
                 ``FOR UPDATE``; a mapping is forwarded to
                 ``Select.with_for_update``.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **keys (Any): Primary-key values named by their column, used for
                 composite keys.
 
@@ -225,7 +255,12 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    def find_all(self, *criteria: ColumnElement[bool], **filters: Any) -> list[EntityT]:
+    def find_all(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> list[EntityT]:
         """Find all entities matching the given criteria and filters.
 
         Positional ``criteria`` are raw SQLAlchemy boolean expressions, e.g.
@@ -237,6 +272,8 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
 
         Args:
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -252,6 +289,7 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
         """Find a page of entities matching the given criteria and filters.
@@ -261,6 +299,8 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
                 they are resolved from the current FastAPI request context.
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
                 ``find_all``.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -304,11 +344,18 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    def delete(self, entity: EntityT, *, autocommit: bool = True) -> None:
+    def delete(
+        self, entity: EntityT, *, hard: bool = False, autocommit: bool = True
+    ) -> None:
         """Delete an entity.
+
+        Soft-deletes when the repository has soft-delete enabled, otherwise
+        hard-deletes. Pass ``hard=True`` to force a hard delete regardless.
 
         Args:
             entity (EntityT): The entity to delete.
+            hard (bool): Force a physical delete even when soft-delete is
+                enabled.
             autocommit (bool): When True, commit the transaction. When False,
                 only flush, leaving the transaction open for the caller to
                 commit.
@@ -317,12 +364,21 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
 
     @abstractmethod
     def delete_all(
-        self, entities: Sequence[EntityT], *, autocommit: bool = True
+        self,
+        entities: Sequence[EntityT],
+        *,
+        hard: bool = False,
+        autocommit: bool = True,
     ) -> None:
         """Delete multiple entities.
 
+        Soft-deletes when the repository has soft-delete enabled, otherwise
+        hard-deletes. Pass ``hard=True`` to force a hard delete regardless.
+
         Args:
             entities (Sequence[EntityT]): The entities to delete.
+            hard (bool): Force a physical delete even when soft-delete is
+                enabled.
             autocommit (bool): When True, commit the transaction. When False,
                 only flush, leaving the transaction open for the caller to
                 commit.

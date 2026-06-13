@@ -113,4 +113,5 @@ customization all work the same as the async repository.
 - [Filtering](filtering.md) — query with keyword filters and operators.
 - [Customizing queries](customizing-queries.md) — eager-load relationships or
   apply a default filter to every read.
+- [Soft delete](soft-delete.md) — mark rows deleted instead of removing them.
 - [Runnable examples](../examples/README.md) — scripts and a small FastAPI app.

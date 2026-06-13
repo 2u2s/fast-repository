@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from datetime import datetime
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -62,3 +63,35 @@ class SyncUserRepository(SyncCRUDRepository[User], AbstractSyncUserRepository):
 
 class SyncMembershipRepository(SyncCRUDRepository[Membership]):
     """Synchronous repository for the composite-key entity."""
+
+
+class Article(Base):
+    """Entity with a datetime soft-delete column."""
+
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+
+
+class Note(Base):
+    """Entity with a boolean soft-delete column."""
+
+    __tablename__ = "notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    body: Mapped[str]
+    archived: Mapped[bool] = mapped_column(default=False)
+
+
+class ArticleRepository(CRUDRepository[Article], soft_delete="deleted_at"):
+    """Soft-deleting repository keyed on a datetime column."""
+
+
+class NoteRepository(CRUDRepository[Note], soft_delete="archived"):
+    """Soft-deleting repository keyed on a boolean column."""
+
+
+class SyncArticleRepository(SyncCRUDRepository[Article], soft_delete="deleted_at"):
+    """Synchronous soft-deleting repository keyed on a datetime column."""

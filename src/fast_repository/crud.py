@@ -69,29 +69,38 @@ class CRUDRepository(
         pk: Any = _UNSET,
         *,
         with_for_update: bool | DbLockInfo = False,
+        with_deleted: bool = False,
         **keys: Any,
     ) -> EntityT | None:
         """Find an entity by its primary key."""
         return await self.session.scalar(
-            self._find_statement(pk, keys, with_for_update)
+            self._find_statement(pk, keys, with_for_update, with_deleted)
         )
 
     async def find_all(
-        self, *criteria: ColumnElement[bool], **filters: Any
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
     ) -> list[EntityT]:
         """Find all entities matching the given criteria and filters."""
-        result = await self.session.scalars(self._find_all_statement(criteria, filters))
+        result = await self.session.scalars(
+            self._find_all_statement(criteria, filters, with_deleted)
+        )
         return list(result.unique().all())
 
     async def find_all_paginated(
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
         """Find a page of entities matching the given criteria and filters."""
         return await apaginate(
-            self.session, self._paginated_statement(criteria, filters), params
+            self.session,
+            self._paginated_statement(criteria, filters, with_deleted),
+            params,
         )
 
     async def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
@@ -108,17 +117,30 @@ class CRUDRepository(
         await self._finish(autocommit)
         return list(entities)
 
-    async def delete(self, entity: EntityT, *, autocommit: bool = True) -> None:
-        """Hard-delete an entity."""
-        await self.session.delete(entity)
+    async def delete(
+        self, entity: EntityT, *, hard: bool = False, autocommit: bool = True
+    ) -> None:
+        """Delete an entity (soft delete when configured, else hard delete)."""
+        if self._soft_delete_column is not None and not hard:
+            self._mark_deleted(entity)
+        else:
+            await self.session.delete(entity)
         await self._finish(autocommit)
 
     async def delete_all(
-        self, entities: Sequence[EntityT], *, autocommit: bool = True
+        self,
+        entities: Sequence[EntityT],
+        *,
+        hard: bool = False,
+        autocommit: bool = True,
     ) -> None:
-        """Hard-delete multiple entities."""
-        for entity in entities:
-            await self.session.delete(entity)
+        """Delete multiple entities (soft delete when configured, else hard)."""
+        if self._soft_delete_column is not None and not hard:
+            for entity in entities:
+                self._mark_deleted(entity)
+        else:
+            for entity in entities:
+                await self.session.delete(entity)
         await self._finish(autocommit)
 
     async def _finish(self, autocommit: bool) -> None:
