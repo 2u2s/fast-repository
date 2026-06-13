@@ -166,9 +166,7 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             )
         else:
             condition = pk_attrs[0] == pk
-        entity: EntityT | None = await self.session.scalar(
-            self.stmt.where(condition)
-        )
+        entity: EntityT | None = await self.session.scalar(self.stmt.where(condition))
         return entity
 
     async def find_all(self, **filters: Any) -> list[EntityT]:

@@ -145,7 +145,9 @@ async def test_find_all_applies_ge_operator(
 
     found = await repo.find_all(age__ge=threshold)
 
-    assert sorted(user.id for user in found) == sorted(user.id for user in expected_users)
+    assert sorted(user.id for user in found) == sorted(
+        user.id for user in expected_users
+    )
 
 
 @pytest.mark.asyncio
@@ -314,9 +316,7 @@ async def test_find_all_uses_user_declared_stmt(
 
     found = await repo.find_all()
 
-    assert sorted(user.id for user in found) == sorted(
-        user.id for user in active_users
-    )
+    assert sorted(user.id for user in found) == sorted(user.id for user in active_users)
 
 
 @pytest.mark.asyncio
@@ -334,9 +334,7 @@ async def test_find_all_uses_class_declared_stmt(
 
     found = await repo.find_all()
 
-    assert sorted(user.id for user in found) == sorted(
-        user.id for user in active_users
-    )
+    assert sorted(user.id for user in found) == sorted(user.id for user in active_users)
 
 
 @pytest.mark.asyncio
@@ -357,9 +355,7 @@ async def test_subclass_inherits_class_declared_stmt(
 
     found = await repo.find_all()
 
-    assert sorted(user.id for user in found) == sorted(
-        user.id for user in active_users
-    )
+    assert sorted(user.id for user in found) == sorted(user.id for user in active_users)
 
 
 @pytest.mark.asyncio

@@ -99,7 +99,9 @@ async def read_user(user_id: int, repo: UserRepo) -> User:
 
 @app.get("/users", response_model=Page[UserOut])
 async def list_users(
-    repo: UserRepo, params: Annotated[Params, Depends()], status: str | None = None,
+    repo: UserRepo,
+    params: Annotated[Params, Depends()],
+    status: str | None = None,
 ) -> Page[User]:
     """List users, optionally filtered by status, one page at a time."""
     filters = {"status": status} if status is not None else {}
