@@ -4,6 +4,10 @@ Every read method (`find`, `find_all`, `find_all_paginated`) builds on a base
 select statement, `stmt`. It defaults to `select(YourEntity)`. Override it to
 eager-load relationships or apply a filter to every read.
 
+> **Note:** This applies equally to `SyncCRUDRepository`. The examples use
+> `CRUDRepository`, but `stmt` customization is defined on the shared base, so
+> swap in `SyncCRUDRepository` and it behaves the same.
+
 ## At class-definition time
 
 Pass `stmt` as a class keyword argument. This is the common case — the

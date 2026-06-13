@@ -3,6 +3,9 @@
 `find_all` and `find_all_paginated` accept keyword filters that translate to
 SQL where-conditions.
 
+> **Note:** The examples below use the async repository. With
+> `SyncCRUDRepository` the calls are identical — just drop the `await`.
+
 ## Equality
 
 A bare `column=value` keyword is an equality condition:

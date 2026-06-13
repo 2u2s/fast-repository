@@ -8,8 +8,8 @@ This guide takes you from installation to a working repository.
 pip install fast-repository
 ```
 
-`fast-repository` needs Python 3.10+, SQLAlchemy 2.0+ (async), and
-fastapi-pagination. They are pulled in automatically.
+`fast-repository` needs Python 3.10+, SQLAlchemy 2.0+, and fastapi-pagination.
+They are pulled in automatically.
 
 ## 1. Define an entity
 
@@ -63,10 +63,9 @@ class UserRepository(CRUDRepository[User], AbstractUserRepository):
 The entity class is captured from the generic argument (`CRUDRepository[User]`)
 at class-definition time, so no constructor wiring is needed beyond the session.
 
-!!! note
-    The class must be subclassed with a concrete entity. Instantiating
-    `CRUDRepository[User]` directly, or subclassing without an entity, raises
-    `TypeError`.
+> **Note:** The class must be subclassed with a concrete entity. Instantiating
+> `CRUDRepository[User]` directly, or subclassing without an entity, raises
+> `TypeError`.
 
 ## 4. Use it
 
@@ -80,6 +79,34 @@ fetched = await repo.find(user.id)
 everyone = await repo.find_all()
 await repo.delete(user)
 ```
+
+## Synchronous repositories
+
+Prefer a synchronous `Session`? Use `SyncCRUDRepository` and
+`AbstractSyncCRUDRepository`. The API is identical — just without `async`/`await`:
+
+```python
+from fast_repository import AbstractSyncCRUDRepository, SyncCRUDRepository
+
+
+class AbstractUserRepository(AbstractSyncCRUDRepository[User], ABC):
+    ...
+
+
+class UserRepository(SyncCRUDRepository[User], AbstractUserRepository):
+    ...
+
+
+repo = UserRepository(session)  # a sqlalchemy.orm.Session
+
+user = repo.save(User(name="Ada", status="active", age=36))
+fetched = repo.find(user.id)
+everyone = repo.find_all()
+repo.delete(user)
+```
+
+Filtering, `with_for_update`, the `autocommit` flag, and base-`stmt`
+customization all work the same as the async repository.
 
 ## Next steps
 

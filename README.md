@@ -25,13 +25,16 @@ class UserRepository(CRUDRepository[User], AbstractUserRepository): ...
 The entity class is captured from the generic argument (`CRUDRepository[User]`)
 at class-definition time — no constructor wiring, no metaclass tricks to learn.
 
+Using a synchronous `Session`? `SyncCRUDRepository` and
+`AbstractSyncCRUDRepository` offer the same API without `async`/`await`.
+
 ## Installation
 
 ```bash
 pip install fast-repository
 ```
 
-Requires Python 3.10+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
+Requires Python 3.10+, SQLAlchemy 2.0+ (async or sync), and fastapi-pagination.
 
 ## Usage
 
@@ -92,7 +95,6 @@ Runnable [examples](examples/README.md) cover basic CRUD, filtering, the
 
 ## Roadmap
 
-- Sync `Session` support
 - Soft-delete support (opt-in)
 
 ## License

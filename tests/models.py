@@ -6,7 +6,12 @@ from abc import ABC
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from fast_repository import AbstractCRUDRepository, CRUDRepository
+from fast_repository import (
+    AbstractCRUDRepository,
+    AbstractSyncCRUDRepository,
+    CRUDRepository,
+    SyncCRUDRepository,
+)
 
 
 class Base(DeclarativeBase):
@@ -45,3 +50,15 @@ class UserRepository(CRUDRepository[User], AbstractUserRepository):
 
 class MembershipRepository(CRUDRepository[Membership]):
     """Repository for the composite-key entity."""
+
+
+class AbstractSyncUserRepository(AbstractSyncCRUDRepository[User], ABC):
+    """Domain-facing interface for synchronous user repositories."""
+
+
+class SyncUserRepository(SyncCRUDRepository[User], AbstractSyncUserRepository):
+    """Synchronous user repository whose CRUD methods come from the library."""
+
+
+class SyncMembershipRepository(SyncCRUDRepository[Membership]):
+    """Synchronous repository for the composite-key entity."""
