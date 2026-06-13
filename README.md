@@ -31,7 +31,7 @@ at class-definition time — no constructor wiring, no metaclass tricks to learn
 pip install fast-repository
 ```
 
-Requires Python 3.12+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
+Requires Python 3.10+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
 
 ## Usage
 
@@ -79,6 +79,15 @@ class UserRepository(
 
 When omitted, reads default to `select(User)`. For runtime customization you
 can also assign `self.stmt` on an instance.
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md) — install, define an entity, wire up a repository.
+- [Filtering](docs/filtering.md) — keyword filters, operator suffixes, primary-key lookups, pagination.
+- [Customizing queries](docs/customizing-queries.md) — eager-load relationships or apply a default filter to every read.
+
+Runnable [examples](examples/README.md) cover basic CRUD, filtering, the
+`autocommit` flag, and a small FastAPI app.
 
 ## Roadmap
 

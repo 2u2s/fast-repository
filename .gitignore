@@ -8,3 +8,4 @@ dist/
 .ruff_cache/
 .idea/
 .DS_Store
+*.db
