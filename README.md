@@ -87,13 +87,13 @@ can also assign `self.stmt` on an instance.
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — install, define an entity, wire up a repository.
-- [Filtering](docs/filtering.md) — keyword filters, operator suffixes, primary-key lookups, pagination.
-- [Customizing queries](docs/customizing-queries.md) — eager-load relationships or apply a default filter to every read.
-- [Transactions](docs/transactions.md) — control commit with the `autocommit` flag and group work into a unit of work.
-- [Soft delete](docs/soft-delete.md) — opt in to marking rows deleted instead of removing them.
+- [Getting Started](https://github.com/2u2s/fast-repository/blob/main/docs/getting-started.md) — install, define an entity, wire up a repository.
+- [Filtering](https://github.com/2u2s/fast-repository/blob/main/docs/filtering.md) — keyword filters, operator suffixes, primary-key lookups, pagination.
+- [Customizing queries](https://github.com/2u2s/fast-repository/blob/main/docs/customizing-queries.md) — eager-load relationships or apply a default filter to every read.
+- [Transactions](https://github.com/2u2s/fast-repository/blob/main/docs/transactions.md) — control commit with the `autocommit` flag and group work into a unit of work.
+- [Soft delete](https://github.com/2u2s/fast-repository/blob/main/docs/soft-delete.md) — opt in to marking rows deleted instead of removing them.
 
-Runnable [examples](examples/README.md) cover basic CRUD, filtering, the
+Runnable [examples](https://github.com/2u2s/fast-repository/blob/main/examples/README.md) cover basic CRUD, filtering, the
 `autocommit` flag, and a small FastAPI app.
 
 ## License

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fast-repository"
-version = "0.1.0"
+version = "0.1.1"
 description = "Interface-first repository pattern for FastAPI + SQLAlchemy. Declare the interface, get the implementation for free."
 readme = "README.md"
 license = "MIT"
