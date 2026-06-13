@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     from fastapi_pagination.bases import AbstractParams
     from sqlalchemy.orm import Session
+    from sqlalchemy.sql import ColumnElement
 
     from .locking import DbLockInfo
 
@@ -74,18 +75,21 @@ class SyncCRUDRepository(
         """Find an entity by its primary key."""
         return self.session.scalar(self._find_statement(pk, keys, with_for_update))
 
-    def find_all(self, **filters: Any) -> list[EntityT]:
-        """Find all entities matching the given filters."""
-        result = self.session.scalars(self._find_all_statement(filters))
+    def find_all(self, *criteria: ColumnElement[bool], **filters: Any) -> list[EntityT]:
+        """Find all entities matching the given criteria and filters."""
+        result = self.session.scalars(self._find_all_statement(criteria, filters))
         return list(result.unique().all())
 
     def find_all_paginated(
         self,
         params: AbstractParams | None = None,
+        *criteria: ColumnElement[bool],
         **filters: Any,
     ) -> Page[EntityT]:
-        """Find a page of entities matching the given filters."""
-        return paginate(self.session, self._paginated_statement(filters), params)
+        """Find a page of entities matching the given criteria and filters."""
+        return paginate(
+            self.session, self._paginated_statement(criteria, filters), params
+        )
 
     def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
         """Persist an entity (create or update)."""

@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 from fastapi_pagination import Params
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -228,6 +228,59 @@ async def test_find_all_applies_is_operator(
     found = await repo.find_all(nickname__is=None)
 
     assert all(user.id != users[0].id for user in found)
+
+
+@pytest.mark.asyncio
+async def test_find_all_accepts_custom_criterion(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [u for u in users if u.status == "inactive" or u.age >= 30]
+
+    found = await repo.find_all(or_(User.status == "inactive", User.age >= 30))
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
+
+
+@pytest.mark.asyncio
+async def test_find_all_combines_criteria_with_keyword_filters(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [
+        u
+        for u in users
+        if u.status == "active" and (u.status == "inactive" or u.age >= 30)
+    ]
+
+    found = await repo.find_all(
+        or_(User.status == "inactive", User.age >= 30), status="active"
+    )
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
+
+
+@pytest.mark.asyncio
+async def test_find_all_accepts_function_expression(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalars", wraps=repo.session.scalars) as spy:
+        found = await repo.find_all(func.length(User.name) == 6)
+
+    assert len(found) == len(users)
+    sql = str(spy.call_args.args[0].compile(dialect=postgresql.dialect()))
+    assert "length(users.name)" in sql
+
+
+@pytest.mark.asyncio
+async def test_find_all_paginated_accepts_custom_criterion(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [u for u in users if u.age >= 30]
+
+    page = await repo.find_all_paginated(
+        Params(page=1, size=len(users)), User.age >= 30
+    )
+
+    assert page.total == len(expected)
 
 
 @pytest.mark.asyncio

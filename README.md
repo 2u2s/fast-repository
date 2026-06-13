@@ -47,6 +47,7 @@ await repo.find(user_id=1, group_id=2)            # composite key by name
 await repo.find_all(status="active")              # ... WHERE status = 'active'
 await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
 await repo.find_all(age__ge=18, name__like="K%") # operator suffixes
+await repo.find_all(or_(User.age < 18, User.age >= 65))  # raw SQLAlchemy expressions
 await repo.find_all_paginated(params=Params(page=1, size=50), status="active")
 
 await repo.save(user)

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from fastapi_pagination import Page
     from fastapi_pagination.bases import AbstractParams
+    from sqlalchemy.sql import ColumnElement
 
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 
@@ -67,14 +68,20 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    async def find_all(self, **filters: Any) -> list[EntityT]:
-        """Find all entities matching the given filters.
+    async def find_all(
+        self, *criteria: ColumnElement[bool], **filters: Any
+    ) -> list[EntityT]:
+        """Find all entities matching the given criteria and filters.
 
-        A bare ``column=value`` keyword translates to an equality condition.
-        A ``column__operator`` keyword applies the named operator (``in``,
-        ``gt``, ``ge``, ``lt``, ``le``, ``like``, ``ilike``, ``is``).
+        Positional ``criteria`` are raw SQLAlchemy boolean expressions, e.g.
+        ``or_(User.status == "active", User.age >= 18)`` or a function call such
+        as ``func.jsonb_path_exists(...)``. A bare ``column=value`` keyword
+        translates to an equality condition; a ``column__operator`` keyword
+        applies the named operator (``in``, ``gt``, ``ge``, ``lt``, ``le``,
+        ``like``, ``ilike``, ``is``). All conditions are combined with ``AND``.
 
         Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -89,13 +96,16 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
     async def find_all_paginated(
         self,
         params: AbstractParams | None = None,
+        *criteria: ColumnElement[bool],
         **filters: Any,
     ) -> Page[EntityT]:
-        """Find a page of entities matching the given filters.
+        """Find a page of entities matching the given criteria and filters.
 
         Args:
             params (AbstractParams | None): Pagination parameters. If None,
                 they are resolved from the current FastAPI request context.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
+                ``find_all``.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -215,14 +225,18 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    def find_all(self, **filters: Any) -> list[EntityT]:
-        """Find all entities matching the given filters.
+    def find_all(self, *criteria: ColumnElement[bool], **filters: Any) -> list[EntityT]:
+        """Find all entities matching the given criteria and filters.
 
-        A bare ``column=value`` keyword translates to an equality condition.
-        A ``column__operator`` keyword applies the named operator (``in``,
-        ``gt``, ``ge``, ``lt``, ``le``, ``like``, ``ilike``, ``is``).
+        Positional ``criteria`` are raw SQLAlchemy boolean expressions, e.g.
+        ``or_(User.status == "active", User.age >= 18)`` or a function call such
+        as ``func.jsonb_path_exists(...)``. A bare ``column=value`` keyword
+        translates to an equality condition; a ``column__operator`` keyword
+        applies the named operator (``in``, ``gt``, ``ge``, ``lt``, ``le``,
+        ``like``, ``ilike``, ``is``). All conditions are combined with ``AND``.
 
         Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
@@ -237,13 +251,16 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
     def find_all_paginated(
         self,
         params: AbstractParams | None = None,
+        *criteria: ColumnElement[bool],
         **filters: Any,
     ) -> Page[EntityT]:
-        """Find a page of entities matching the given filters.
+        """Find a page of entities matching the given criteria and filters.
 
         Args:
             params (AbstractParams | None): Pagination parameters. If None,
                 they are resolved from the current FastAPI request context.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
+                ``find_all``.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:

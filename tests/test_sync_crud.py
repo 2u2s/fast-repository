@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 from fastapi_pagination import Params
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
@@ -92,6 +92,31 @@ def test_find_all_rejects_unknown_column(
 ) -> None:
     with pytest.raises(InvalidFilterError):
         sync_repo.find_all(unknown_column="value")
+
+
+def test_find_all_accepts_custom_criterion(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    expected = [u for u in sync_users if u.status == "inactive" or u.age >= 30]
+
+    found = sync_repo.find_all(or_(User.status == "inactive", User.age >= 30))
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
+
+
+def test_find_all_combines_criteria_with_keyword_filters(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    found = sync_repo.find_all(
+        or_(User.status == "inactive", User.age >= 30), status="active"
+    )
+
+    expected = [
+        u
+        for u in sync_users
+        if u.status == "active" and (u.status == "inactive" or u.age >= 30)
+    ]
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
 
 
 def test_find_all_paginated_returns_requested_page(

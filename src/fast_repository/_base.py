@@ -25,6 +25,7 @@ from .filters import build_conditions
 if TYPE_CHECKING:
     from sqlalchemy import Select
     from sqlalchemy.orm import InstrumentedAttribute
+    from sqlalchemy.sql import ColumnElement
 
     from .locking import DbLockInfo
 
@@ -116,18 +117,26 @@ class _BaseCRUDRepository(Generic[EntityT]):
             stmt = stmt.with_for_update(**options)
         return stmt
 
-    def _find_all_statement(self, filters: dict[str, Any]) -> Select[tuple[Any]]:
+    def _find_all_statement(
+        self,
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+    ) -> Select[tuple[Any]]:
         """Build the select for a filtered collection read."""
+        conditions = (*criteria, *build_conditions(self._entity_cls, filters))
         stmt = self.stmt
-        conditions = build_conditions(self._entity_cls, filters)
         if conditions:
             stmt = stmt.where(*conditions)
         return stmt
 
-    def _paginated_statement(self, filters: dict[str, Any]) -> Select[tuple[Any]]:
+    def _paginated_statement(
+        self,
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+    ) -> Select[tuple[Any]]:
         """Build the select for a paginated read, ordered by primary key."""
+        conditions = (*criteria, *build_conditions(self._entity_cls, filters))
         stmt = self.stmt.order_by(*self._pks)
-        conditions = build_conditions(self._entity_cls, filters)
         if conditions:
             stmt = stmt.where(*conditions)
         return stmt

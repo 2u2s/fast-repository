@@ -39,6 +39,33 @@ await repo.find_all(deleted_at__is=None)    # WHERE deleted_at IS NULL
 Exact column names take precedence, so a column whose own name contains `__` is
 still addressable directly.
 
+## Custom SQLAlchemy expressions
+
+When the keyword syntax is not enough, pass raw SQLAlchemy boolean expressions
+as positional arguments. They are added to the query's `WHERE` clause exactly as
+SQLAlchemy's own `select().where(...)` would, so anything you can express there
+works — `or_`, `and_`, negation, function calls, JSON path checks, and more:
+
+```python
+from sqlalchemy import func, or_
+
+await repo.find_all(or_(User.status == "inactive", User.age >= 30))
+await repo.find_all(func.jsonb_path_exists(User.data, "$.role"))
+```
+
+Positional expressions and keyword filters can be combined; everything is joined
+with `AND`:
+
+```python
+await repo.find_all(or_(User.age < 18, User.age >= 65), status="active")
+```
+
+`find_all_paginated` accepts the same expressions, after the `params` argument:
+
+```python
+await repo.find_all_paginated(Params(page=1, size=50), User.age >= 30)
+```
+
 ## Unknown filters raise
 
 An unknown column or operator raises `InvalidFilterError` (a subclass of
