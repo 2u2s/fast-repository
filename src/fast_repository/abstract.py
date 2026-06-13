@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from sqlalchemy.orm import DeclarativeBase
 
+from .locking import DbLockInfo
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -36,15 +38,26 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
     """
 
     @abstractmethod
-    async def find(self, pk: Any = None, **keys: Any) -> EntityT | None:
+    async def find(
+        self,
+        pk: Any = None,
+        *,
+        with_for_update: bool | DbLockInfo = False,
+        **keys: Any,
+    ) -> EntityT | None:
         """Find an entity by its primary key.
 
         Pass a single-column primary key positionally; supply a composite
-        primary key as keyword arguments naming each key column.
+        primary key as keyword arguments naming each key column. Pass
+        ``with_for_update`` to acquire a row lock.
 
         Args:
             pk (Any): Single-column primary-key value. Omit when using keyword
                 arguments.
+            with_for_update (bool | DbLockInfo): Row-locking options. ``False``
+                (the default) reads without a lock; ``True`` locks with a plain
+                ``FOR UPDATE``; a mapping is forwarded to
+                ``Select.with_for_update``.
             **keys (Any): Primary-key values named by their column, used for
                 composite keys.
 

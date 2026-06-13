@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+from unittest import mock
+
 import pytest
 from fastapi_pagination import Params
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_repository import CRUDRepository, InvalidFilterError
 from tests.models import Membership, MembershipRepository, User, UserRepository
+
+
+def _compiled_sql(spy: mock.Mock) -> str:
+    """Compile the statement passed to a spied ``session.scalar`` for assertions.
+
+    Locking clauses are dialect-specific and omitted by SQLite, so the captured
+    statement is compiled against the PostgreSQL dialect to inspect the emitted
+    SQL without needing a real PostgreSQL connection.
+    """
+    statement = spy.call_args.args[0]
+    return str(statement.compile(dialect=postgresql.dialect()))
 
 
 @pytest.mark.asyncio
@@ -92,6 +106,60 @@ async def test_find_rejects_missing_key(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError):
         await repo.find()
+
+
+@pytest.mark.asyncio
+async def test_find_without_lock_has_no_for_update(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalar", wraps=repo.session.scalar) as spy:
+        await repo.find(users[0].id)
+
+    assert "FOR UPDATE" not in _compiled_sql(spy)
+
+
+@pytest.mark.asyncio
+async def test_find_with_for_update_true_locks_row(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalar", wraps=repo.session.scalar) as spy:
+        found = await repo.find(users[0].id, with_for_update=True)
+
+    assert found is users[0]
+    assert "FOR UPDATE" in _compiled_sql(spy)
+
+
+@pytest.mark.asyncio
+async def test_find_with_for_update_forwards_nowait(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalar", wraps=repo.session.scalar) as spy:
+        await repo.find(users[0].id, with_for_update={"nowait": True})
+
+    assert "FOR UPDATE NOWAIT" in _compiled_sql(spy)
+
+
+@pytest.mark.asyncio
+async def test_find_with_for_update_forwards_of(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalar", wraps=repo.session.scalar) as spy:
+        await repo.find(users[0].id, with_for_update={"of": User})
+
+    assert "FOR UPDATE OF users" in _compiled_sql(spy)
+
+
+@pytest.mark.asyncio
+async def test_find_with_for_update_works_on_composite_key(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+    membership = Membership(user_id=1, group_id=2, role="admin")
+    await repo.save(membership)
+
+    found = await repo.find(user_id=1, group_id=2, with_for_update=True)
+
+    assert found is membership
 
 
 @pytest.mark.asyncio

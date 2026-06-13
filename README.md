@@ -39,6 +39,7 @@ Requires Python 3.10+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
 repo = UserRepository(session)  # AsyncSession
 
 await repo.find(1)                                # SELECT ... WHERE id = 1
+await repo.find(1, with_for_update=True)          # ... FOR UPDATE (row lock)
 await repo.find(user_id=1, group_id=2)            # composite key by name
 await repo.find_all(status="active")              # ... WHERE status = 'active'
 await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
@@ -93,7 +94,6 @@ Runnable [examples](examples/README.md) cover basic CRUD, filtering, the
 
 - Sync `Session` support
 - Soft-delete support (opt-in)
-- `with_for_update` row-locking options on `find`
 
 ## License
 

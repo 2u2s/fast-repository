@@ -11,14 +11,15 @@ from typing import (
     get_args,
     get_origin,
 )
-from fastapi_pagination import Page
 
+from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import apaginate
 from sqlalchemy import and_, inspect, select
 from sqlalchemy.orm import DeclarativeBase
 
 from .abstract import AbstractCRUDRepository
 from .filters import build_conditions
+from .locking import DbLockInfo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -118,7 +119,13 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             for column in mapper.primary_key
         )
 
-    async def find(self, pk: Any = _UNSET, **keys: Any) -> EntityT | None:
+    async def find(
+        self,
+        pk: Any = _UNSET,
+        *,
+        with_for_update: bool | DbLockInfo = False,
+        **keys: Any,
+    ) -> EntityT | None:
         """Find an entity by its primary key.
 
         Pass a single-column primary key positionally. A composite primary key
@@ -127,9 +134,19 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             await repo.find(1)
             await repo.find(user_id=1, group_id=2)
 
+        Acquire a row lock by passing ``with_for_update``. ``True`` emits a plain
+        ``FOR UPDATE``; a mapping forwards its options to SQLAlchemy::
+
+            await repo.find(1, with_for_update=True)
+            await repo.find(1, with_for_update={"nowait": True})
+
         Args:
             pk (Any): Single-column primary-key value. Omit when using keyword
                 arguments.
+            with_for_update (bool | DbLockInfo): Row-locking options. ``False``
+                (the default) reads without a lock; ``True`` locks with a plain
+                ``FOR UPDATE``; a mapping is forwarded to
+                ``Select.with_for_update``.
             **keys (Any): Primary-key values named by their column, used for
                 composite keys.
 
@@ -166,7 +183,13 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             )
         else:
             condition = pk_attrs[0] == pk
-        entity: EntityT | None = await self.session.scalar(self.stmt.where(condition))
+        stmt = self.stmt.where(condition)
+        if with_for_update is not False:
+            options: dict[str, Any] = (
+                {} if with_for_update is True else dict(with_for_update)
+            )
+            stmt = stmt.with_for_update(**options)
+        entity: EntityT | None = await self.session.scalar(stmt)
         return entity
 
     async def find_all(self, **filters: Any) -> list[EntityT]:

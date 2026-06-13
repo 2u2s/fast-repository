@@ -69,6 +69,31 @@ await repo.find(user_id=1, group_id=2)
 `find` returns the entity or `None`. Passing a composite key positionally, or
 keys that do not match the entity's primary-key columns, raises `ValueError`.
 
+## Locking rows for update
+
+Pass `with_for_update` to `find` to acquire a row lock (`SELECT ... FOR UPDATE`),
+typically inside a transaction before modifying the row. `True` emits a plain
+`FOR UPDATE`:
+
+```python
+user = await repo.find(1, with_for_update=True)
+```
+
+A mapping forwards its options to SQLAlchemy's `Select.with_for_update`. The
+keys are described by the `DbLockInfo` type (`nowait`, `read`, `skip_locked`,
+`key_share`, `of`):
+
+```python
+from fast_repository import DbLockInfo
+
+await repo.find(1, with_for_update={"nowait": True})
+await repo.find(1, with_for_update={"skip_locked": True})
+```
+
+The default, `with_for_update=False`, reads without a lock. Locking is
+dialect-specific; databases that do not support `FOR UPDATE` (such as SQLite)
+ignore it.
+
 ## Pagination
 
 `find_all_paginated` accepts the same filters and returns a fastapi-pagination
