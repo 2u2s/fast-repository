@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 
 from fastapi_pagination import Params
-from models import UserRepository, make_session, seed
+from models import User, UserRepository, make_session, seed
+from sqlalchemy import func, or_
 
 from fast_repository import InvalidFilterError
 
@@ -34,6 +35,18 @@ async def main() -> None:
 
         like = await repo.find_all(name__like="A%")
         print(f"name like A%: {[u.name for u in like]}")
+
+        # Positional arguments are raw SQLAlchemy expressions, combined with AND.
+        young_or_old = await repo.find_all(or_(User.age < 40, User.age >= 80))
+        print(f"age <40 or >=80: {[u.name for u in young_or_old]}")
+
+        # Any SQLAlchemy expression works, e.g. a function call.
+        short_names = await repo.find_all(func.length(User.name) <= 4)
+        print(f"name length <= 4: {[u.name for u in short_names]}")
+
+        # Expressions and keyword filters can be mixed.
+        active_seniors = await repo.find_all(User.age >= 60, status="active")
+        print(f"active and >=60: {[u.name for u in active_seniors]}")
 
         # Pagination returns a fastapi-pagination Page, ordered by primary key.
         page = await repo.find_all_paginated(Params(page=1, size=2), status="active")

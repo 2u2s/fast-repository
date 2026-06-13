@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -40,6 +41,20 @@ class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
 
 class UserRepository(CRUDRepository[User], AbstractUserRepository):
     """Concrete repository — all CRUD methods come from the library."""
+
+
+class Article(Base):
+    """An entity with a soft-delete column."""
+
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+
+
+class ArticleRepository(CRUDRepository[Article], soft_delete=Article.deleted_at):
+    """Soft-deleting repository — delete() marks rows instead of removing them."""
 
 
 async def make_session() -> AsyncIterator[AsyncSession]:

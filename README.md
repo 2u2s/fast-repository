@@ -90,6 +90,7 @@ can also assign `self.stmt` on an instance.
 - [Getting Started](docs/getting-started.md) — install, define an entity, wire up a repository.
 - [Filtering](docs/filtering.md) — keyword filters, operator suffixes, primary-key lookups, pagination.
 - [Customizing queries](docs/customizing-queries.md) — eager-load relationships or apply a default filter to every read.
+- [Transactions](docs/transactions.md) — control commit with the `autocommit` flag and group work into a unit of work.
 - [Soft delete](docs/soft-delete.md) — opt in to marking rows deleted instead of removing them.
 
 Runnable [examples](examples/README.md) cover basic CRUD, filtering, the
