@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_repository import CRUDRepository, InvalidFilterError
-from tests.models import User, UserRepository
+from tests.models import Membership, MembershipRepository, User, UserRepository
 
 
 @pytest.mark.asyncio
@@ -29,6 +29,69 @@ async def test_find_returns_none_when_missing(
     found = await repo.find(missing_id)
 
     assert not found
+
+
+@pytest.mark.asyncio
+async def test_find_returns_entity_by_composite_kwargs(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+    membership = Membership(user_id=1, group_id=2, role="admin")
+    await repo.save(membership)
+
+    found = await repo.find(user_id=1, group_id=2)
+
+    assert found is membership
+
+
+@pytest.mark.asyncio
+async def test_find_returns_none_for_missing_composite_key(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+    await repo.save(Membership(user_id=1, group_id=2, role="admin"))
+
+    found = await repo.find(user_id=1, group_id=99)
+
+    assert found is None
+
+
+@pytest.mark.asyncio
+async def test_find_rejects_positional_composite_key(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+
+    with pytest.raises(ValueError):
+        await repo.find(1)
+
+
+@pytest.mark.asyncio
+async def test_find_rejects_unknown_composite_kwargs(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+
+    with pytest.raises(ValueError):
+        await repo.find(user_id=1, role="admin")
+
+
+@pytest.mark.asyncio
+async def test_find_rejects_mixing_positional_and_keyword_keys(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+
+    with pytest.raises(ValueError):
+        await repo.find(1, group_id=2)
+
+
+@pytest.mark.asyncio
+async def test_find_rejects_missing_key(session: AsyncSession) -> None:
+    repo = MembershipRepository(session)
+
+    with pytest.raises(ValueError):
+        await repo.find()
 
 
 @pytest.mark.asyncio

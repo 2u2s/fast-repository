@@ -14,7 +14,7 @@ from typing import (
 from fastapi_pagination import Page
 
 from fastapi_pagination.ext.sqlalchemy import apaginate
-from sqlalchemy import inspect, select
+from sqlalchemy import and_, inspect, select
 from sqlalchemy.orm import DeclarativeBase
 
 from .abstract import AbstractCRUDRepository
@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import InstrumentedAttribute
 
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
+
+_UNSET: Any = object()
 
 
 class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
@@ -108,35 +110,64 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
         self.session = session
 
     @property
-    def _pk(self) -> InstrumentedAttribute[Any]:
-        """Primary-key attribute of the entity.
-
-        Raises:
-            TypeError: If the entity has a composite primary key.
-
-        """
+    def _pks(self) -> tuple[InstrumentedAttribute[Any], ...]:
+        """Primary-key attributes of the entity, in column order."""
         mapper = inspect(self._entity_cls).mapper
-        if len(mapper.primary_key) != 1:
-            raise TypeError(
-                f"{type(self).__name__} requires a single-column primary "
-                f"key; {self._entity_cls.__name__} has "
-                f"{len(mapper.primary_key)} primary-key columns."
-            )
-        pk_property = mapper.get_property_by_column(mapper.primary_key[0])
-        return pk_property.class_attribute
+        return tuple(
+            mapper.get_property_by_column(column).class_attribute
+            for column in mapper.primary_key
+        )
 
-    async def find(self, pk: Any) -> EntityT | None:
+    async def find(self, pk: Any = _UNSET, **keys: Any) -> EntityT | None:
         """Find an entity by its primary key.
 
+        Pass a single-column primary key positionally. A composite primary key
+        must be supplied as keyword arguments naming each key column::
+
+            await repo.find(1)
+            await repo.find(user_id=1, group_id=2)
+
         Args:
-            pk (Any): Primary-key value of the entity.
+            pk (Any): Single-column primary-key value. Omit when using keyword
+                arguments.
+            **keys (Any): Primary-key values named by their column, used for
+                composite keys.
 
         Returns:
             EntityT | None: The entity, or None if it does not exist.
 
+        Raises:
+            ValueError: If no key is supplied, if both positional and keyword
+                keys are given, if the supplied keys do not match the entity's
+                primary-key columns, or if a composite key is passed
+                positionally.
+
         """
+        pk_attrs = self._pks
+        if keys:
+            if pk is not _UNSET:
+                raise ValueError(
+                    "Pass the primary key positionally or as keywords, not both."
+                )
+            expected = {attr.key for attr in pk_attrs}
+            if keys.keys() != expected:
+                raise ValueError(
+                    f"{self._entity_cls.__name__} primary key is "
+                    f"{sorted(expected)}; got {sorted(keys)}."
+                )
+            condition = and_(*(attr == keys[attr.key] for attr in pk_attrs))
+        elif pk is _UNSET:
+            raise ValueError("find() requires a primary-key value.")
+        elif len(pk_attrs) != 1:
+            columns = ", ".join(f"{attr.key}=..." for attr in pk_attrs)
+            raise ValueError(
+                f"{self._entity_cls.__name__} has a composite primary key; "
+                f"pass its columns as keyword arguments, e.g. find({columns})."
+            )
+        else:
+            condition = pk_attrs[0] == pk
         entity: EntityT | None = await self.session.scalar(
-            self.stmt.where(self._pk == pk)
+            self.stmt.where(condition)
         )
         return entity
 
@@ -179,7 +210,7 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             InvalidFilterError: If a keyword matches no mapped column.
 
         """
-        stmt = self.stmt.order_by(self._pk)
+        stmt = self.stmt.order_by(*self._pks)
         conditions = build_conditions(self._entity_cls, filters)
         if conditions:
             stmt = stmt.where(*conditions)

@@ -25,9 +25,23 @@ class User(Base):
     nickname: Mapped[str | None] = mapped_column(default=None)
 
 
+class Membership(Base):
+    """Entity with a composite primary key used in the test suite."""
+
+    __tablename__ = "memberships"
+
+    user_id: Mapped[int] = mapped_column(primary_key=True)
+    group_id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str]
+
+
 class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
     """Domain-facing interface for user repositories."""
 
 
 class UserRepository(CRUDRepository[User], AbstractUserRepository):
     """User repository whose CRUD methods come from the library."""
+
+
+class MembershipRepository(CRUDRepository[Membership]):
+    """Repository for the composite-key entity."""

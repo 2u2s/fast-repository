@@ -39,6 +39,7 @@ Requires Python 3.12+, SQLAlchemy 2.0+ (async), and fastapi-pagination.
 repo = UserRepository(session)  # AsyncSession
 
 await repo.find(1)                                # SELECT ... WHERE id = 1
+await repo.find(user_id=1, group_id=2)            # composite key by name
 await repo.find_all(status="active")              # ... WHERE status = 'active'
 await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
 await repo.find_all(age__ge=18, name__like="K%") # operator suffixes
@@ -84,7 +85,6 @@ can also assign `self.stmt` on an instance.
 - Sync `Session` support
 - Soft-delete support (opt-in)
 - `with_for_update` row-locking options on `find`
-- Composite primary keys
 
 ## License
 

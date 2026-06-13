@@ -36,11 +36,17 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
     """
 
     @abstractmethod
-    async def find(self, pk: Any) -> EntityT | None:
+    async def find(self, pk: Any = None, **keys: Any) -> EntityT | None:
         """Find an entity by its primary key.
 
+        Pass a single-column primary key positionally; supply a composite
+        primary key as keyword arguments naming each key column.
+
         Args:
-            pk (Any): Primary-key value of the entity.
+            pk (Any): Single-column primary-key value. Omit when using keyword
+                arguments.
+            **keys (Any): Primary-key values named by their column, used for
+                composite keys.
 
         Returns:
             EntityT | None: The entity, or None if it does not exist.
