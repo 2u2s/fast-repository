@@ -212,6 +212,19 @@ async def test_save_persists_new_entity(repo: UserRepository) -> None:
 
 
 @pytest.mark.asyncio
+async def test_save_flushes_without_committing_when_autocommit_false(
+    repo: UserRepository, session: AsyncSession
+) -> None:
+    user = User(name="new-user", status="active", age=25)
+
+    saved = await repo.save(user, autocommit=False)
+
+    assert saved.id  # flushed: primary key is populated
+    await session.rollback()
+    assert not await repo.find(saved.id)  # not committed: rollback undoes it
+
+
+@pytest.mark.asyncio
 async def test_save_all_persists_multiple_entities(repo: UserRepository) -> None:
     new_users = [
         User(name="new-user-0", status="active", age=25),
@@ -222,6 +235,22 @@ async def test_save_all_persists_multiple_entities(repo: UserRepository) -> None
 
     found = await repo.find_all(id__in=[user.id for user in saved])
     assert len(found) == len(new_users)
+
+
+@pytest.mark.asyncio
+async def test_save_all_flushes_without_committing_when_autocommit_false(
+    repo: UserRepository, session: AsyncSession
+) -> None:
+    new_users = [
+        User(name="new-user-0", status="active", age=25),
+        User(name="new-user-1", status="inactive", age=35),
+    ]
+
+    saved = await repo.save_all(new_users, autocommit=False)
+
+    assert all(user.id for user in saved)  # flushed: primary keys populated
+    await session.rollback()
+    assert not await repo.find_all(id__in=[user.id for user in saved])
 
 
 @pytest.mark.asyncio
@@ -242,6 +271,32 @@ async def test_delete_all_removes_all_entities(
     await repo.delete_all(users)
 
     assert not await repo.find_all(id__in=target_ids)
+
+
+@pytest.mark.asyncio
+async def test_delete_flushes_without_committing_when_autocommit_false(
+    repo: UserRepository, session: AsyncSession, users: list[User]
+) -> None:
+    target_id = users[0].id
+
+    await repo.delete(users[0], autocommit=False)
+
+    assert not await repo.find(target_id)  # flushed: gone within the transaction
+    await session.rollback()
+    assert await repo.find(target_id)  # not committed: rollback restores it
+
+
+@pytest.mark.asyncio
+async def test_delete_all_flushes_without_committing_when_autocommit_false(
+    repo: UserRepository, session: AsyncSession, users: list[User]
+) -> None:
+    target_ids = [user.id for user in users]
+
+    await repo.delete_all(users, autocommit=False)
+
+    assert not await repo.find_all(id__in=target_ids)
+    await session.rollback()
+    assert len(await repo.find_all(id__in=target_ids)) == len(target_ids)
 
 
 @pytest.mark.asyncio

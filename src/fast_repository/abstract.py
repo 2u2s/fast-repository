@@ -94,11 +94,14 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    async def save(self, entity: EntityT) -> EntityT:
+    async def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
         """Persist an entity (create or update).
 
         Args:
             entity (EntityT): The entity to persist.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush so generated values are populated while leaving the
+                transaction open for the caller to commit.
 
         Returns:
             EntityT: The persisted entity.
@@ -106,11 +109,16 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    async def save_all(self, entities: Sequence[EntityT]) -> list[EntityT]:
+    async def save_all(
+        self, entities: Sequence[EntityT], *, autocommit: bool = True
+    ) -> list[EntityT]:
         """Persist multiple entities (create or update).
 
         Args:
             entities (Sequence[EntityT]): The entities to persist.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush so generated values are populated while leaving the
+                transaction open for the caller to commit.
 
         Returns:
             list[EntityT]: The persisted entities.
@@ -118,19 +126,27 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
     @abstractmethod
-    async def delete(self, entity: EntityT) -> None:
+    async def delete(self, entity: EntityT, *, autocommit: bool = True) -> None:
         """Delete an entity.
 
         Args:
             entity (EntityT): The entity to delete.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush, leaving the transaction open for the caller to
+                commit.
 
         """
 
     @abstractmethod
-    async def delete_all(self, entities: Sequence[EntityT]) -> None:
+    async def delete_all(
+        self, entities: Sequence[EntityT], *, autocommit: bool = True
+    ) -> None:
         """Delete multiple entities.
 
         Args:
             entities (Sequence[EntityT]): The entities to delete.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush, leaving the transaction open for the caller to
+                commit.
 
         """

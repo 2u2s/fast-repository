@@ -216,51 +216,74 @@ class CRUDRepository(AbstractCRUDRepository[EntityT], Generic[EntityT]):
             stmt = stmt.where(*conditions)
         return await apaginate(self.session, stmt, params)
 
-    async def save(self, entity: EntityT) -> EntityT:
-        """Persist an entity (create or update) and commit.
+    async def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
+        """Persist an entity (create or update).
 
         Args:
             entity (EntityT): The entity to persist.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush so generated values are populated while leaving the
+                transaction open for the caller to commit.
 
         Returns:
             EntityT: The persisted entity.
 
         """
         self.session.add(entity)
-        await self.session.commit()
+        await self._finish(autocommit)
         return entity
 
-    async def save_all(self, entities: Sequence[EntityT]) -> list[EntityT]:
-        """Persist multiple entities (create or update) and commit.
+    async def save_all(
+        self, entities: Sequence[EntityT], *, autocommit: bool = True
+    ) -> list[EntityT]:
+        """Persist multiple entities (create or update).
 
         Args:
             entities (Sequence[EntityT]): The entities to persist.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush so generated values are populated while leaving the
+                transaction open for the caller to commit.
 
         Returns:
             list[EntityT]: The persisted entities.
 
         """
         self.session.add_all(entities)
-        await self.session.commit()
+        await self._finish(autocommit)
         return list(entities)
 
-    async def delete(self, entity: EntityT) -> None:
-        """Hard-delete an entity and commit.
+    async def delete(self, entity: EntityT, *, autocommit: bool = True) -> None:
+        """Hard-delete an entity.
 
         Args:
             entity (EntityT): The entity to delete.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush, leaving the transaction open for the caller to
+                commit.
 
         """
         await self.session.delete(entity)
-        await self.session.commit()
+        await self._finish(autocommit)
 
-    async def delete_all(self, entities: Sequence[EntityT]) -> None:
-        """Hard-delete multiple entities and commit.
+    async def delete_all(
+        self, entities: Sequence[EntityT], *, autocommit: bool = True
+    ) -> None:
+        """Hard-delete multiple entities.
 
         Args:
             entities (Sequence[EntityT]): The entities to delete.
+            autocommit (bool): When True, commit the transaction. When False,
+                only flush, leaving the transaction open for the caller to
+                commit.
 
         """
         for entity in entities:
             await self.session.delete(entity)
-        await self.session.commit()
+        await self._finish(autocommit)
+
+    async def _finish(self, autocommit: bool) -> None:
+        """Commit the transaction, or flush when the caller manages it."""
+        if autocommit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
