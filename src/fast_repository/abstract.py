@@ -74,6 +74,7 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
     async def find_all(
         self,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> list[EntityT]:
@@ -83,11 +84,15 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         ``or_(User.status == "active", User.age >= 18)`` or a function call such
         as ``func.jsonb_path_exists(...)``. A bare ``column=value`` keyword
         translates to an equality condition; a ``column__operator`` keyword
-        applies the named operator (``in``, ``gt``, ``ge``, ``lt``, ``le``,
-        ``like``, ``ilike``, ``is``). All conditions are combined with ``AND``.
+        applies the named operator (``in``, ``notin``, ``ne``, ``gt``, ``ge``,
+        ``lt``, ``le``, ``like``, ``ilike``, ``is``). All conditions are
+        combined with ``AND``.
 
         Args:
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            order_by (Any): One SQLAlchemy order expression (e.g.
+                ``Entity.col.desc()``) or a sequence of them. ``None`` (the
+                default) applies no ordering.
             with_deleted (bool): When the repository has soft-delete enabled,
                 include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
@@ -105,6 +110,7 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
@@ -115,12 +121,70 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
                 they are resolved from the current FastAPI request context.
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
                 ``find_all``.
+            order_by (Any): One SQLAlchemy order expression or a sequence of
+                them, applied before the primary-key tie-breaker. ``None``
+                (the default) orders by primary key alone. If it already
+                includes the primary key, a harmless duplicate ordering term
+                is emitted.
             with_deleted (bool): When the repository has soft-delete enabled,
                 include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
             Page[EntityT]: The paginated entities.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def count(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> int:
+        """Count entities matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            int: The number of matching entities.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def exists(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> bool:
+        """Return whether any entity matches the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            bool: True if at least one entity matches.
 
         Raises:
             InvalidFilterError: If a keyword matches no mapped column.
@@ -258,6 +322,7 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
     def find_all(
         self,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> list[EntityT]:
@@ -267,11 +332,15 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         ``or_(User.status == "active", User.age >= 18)`` or a function call such
         as ``func.jsonb_path_exists(...)``. A bare ``column=value`` keyword
         translates to an equality condition; a ``column__operator`` keyword
-        applies the named operator (``in``, ``gt``, ``ge``, ``lt``, ``le``,
-        ``like``, ``ilike``, ``is``). All conditions are combined with ``AND``.
+        applies the named operator (``in``, ``notin``, ``ne``, ``gt``, ``ge``,
+        ``lt``, ``le``, ``like``, ``ilike``, ``is``). All conditions are
+        combined with ``AND``.
 
         Args:
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            order_by (Any): One SQLAlchemy order expression (e.g.
+                ``Entity.col.desc()``) or a sequence of them. ``None`` (the
+                default) applies no ordering.
             with_deleted (bool): When the repository has soft-delete enabled,
                 include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
@@ -289,6 +358,7 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
@@ -299,12 +369,70 @@ class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
                 they are resolved from the current FastAPI request context.
             *criteria (ColumnElement[bool]): SQLAlchemy where-expressions, as in
                 ``find_all``.
+            order_by (Any): One SQLAlchemy order expression or a sequence of
+                them, applied before the primary-key tie-breaker. ``None``
+                (the default) orders by primary key alone. If it already
+                includes the primary key, a harmless duplicate ordering term
+                is emitted.
             with_deleted (bool): When the repository has soft-delete enabled,
                 include soft-deleted rows. Ignored otherwise.
             **filters (Any): Keyword filters applied as where-conditions.
 
         Returns:
             Page[EntityT]: The paginated entities.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    def count(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> int:
+        """Count entities matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            int: The number of matching entities.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    def exists(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> bool:
+        """Return whether any entity matches the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            bool: True if at least one entity matches.
 
         Raises:
             InvalidFilterError: If a keyword matches no mapped column.

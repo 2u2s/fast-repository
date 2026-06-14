@@ -15,7 +15,8 @@ from tests.models import Membership, MembershipRepository, User, UserRepository
 
 
 def _compiled_sql(spy: mock.Mock) -> str:
-    """Compile the statement passed to a spied ``session.scalar`` for assertions.
+    """Compile the statement passed to a spied ``session.scalar`` or ``session.scalars``
+    call.
 
     Locking clauses are dialect-specific and omitted by SQLite, so the captured
     statement is compiled against the PostgreSQL dialect to inspect the emitted
@@ -489,3 +490,157 @@ async def test_init_subclass_inherits_entity_from_parent(
     admin_repo = AdminUserRepository(session)
 
     assert not await admin_repo.find_all(name="nobody")
+
+
+@pytest.mark.asyncio
+async def test_find_all_applies_ne_operator(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [user for user in users if user.status != "active"]
+
+    found = await repo.find_all(status__ne="active")
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
+
+
+@pytest.mark.asyncio
+async def test_find_all_applies_notin_operator(
+    repo: UserRepository, users: list[User]
+) -> None:
+    excluded = [users[0].id, users[1].id]
+    expected = [user for user in users if user.id not in excluded]
+
+    found = await repo.find_all(id__notin=excluded)
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in expected)
+
+
+@pytest.mark.asyncio
+async def test_find_all_notin_with_empty_list_returns_all(
+    repo: UserRepository, users: list[User]
+) -> None:
+    found = await repo.find_all(id__notin=[])
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in users)
+
+
+@pytest.mark.asyncio
+async def test_find_all_orders_by_single_expression(
+    repo: UserRepository, users: list[User]
+) -> None:
+    found = await repo.find_all(order_by=User.age.desc())
+
+    assert [u.age for u in found] == sorted(
+        (u.age for u in users), reverse=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_all_orders_by_multiple_expressions(
+    repo: UserRepository, users: list[User]
+) -> None:
+    found = await repo.find_all(order_by=[User.status, User.age.desc()])
+
+    assert [u.age for u in found] == [30, 20, 40]
+
+
+@pytest.mark.asyncio
+async def test_find_all_without_order_by_adds_no_ordering(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalars", wraps=repo.session.scalars) as spy:
+        await repo.find_all()
+
+    assert "ORDER BY" not in _compiled_sql(spy)
+
+
+@pytest.mark.asyncio
+async def test_find_all_paginated_applies_order_by(
+    repo: UserRepository, users: list[User]
+) -> None:
+    page = await repo.find_all_paginated(
+        Params(page=1, size=len(users)), order_by=User.age.desc()
+    )
+
+    assert [u.age for u in page.items] == sorted(
+        (u.age for u in users), reverse=True
+    )
+
+
+def test_paginated_statement_appends_pk_tiebreaker(repo: UserRepository) -> None:
+    stmt = repo._paginated_statement((), {}, User.status, False)
+
+    sql = str(stmt.compile(dialect=postgresql.dialect()))
+    order_clause = sql[sql.index("ORDER BY"):]
+    assert order_clause.index("users.status") < order_clause.index("users.id")
+
+
+@pytest.mark.asyncio
+async def test_count_returns_total(
+    repo: UserRepository, users: list[User]
+) -> None:
+    assert await repo.count() == len(users)
+
+
+@pytest.mark.asyncio
+async def test_count_applies_filters(
+    repo: UserRepository, users: list[User]
+) -> None:
+    active = [u for u in users if u.status == "active"]
+
+    assert await repo.count(status="active") == len(active)
+
+
+@pytest.mark.asyncio
+async def test_count_respects_class_declared_stmt(
+    session: AsyncSession, users: list[User]
+) -> None:
+    active = [u for u in users if u.status == "active"]
+
+    class ActiveUserRepository(
+        CRUDRepository[User], stmt=select(User).where(User.status == "active")
+    ):
+        """Repository with a default filter applied to all reads."""
+
+    assert await ActiveUserRepository(session).count() == len(active)
+
+
+@pytest.mark.asyncio
+async def test_count_applies_positional_criterion(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [u for u in users if u.age > 25]
+
+    assert await repo.count(User.age > 25) == len(expected)
+
+
+@pytest.mark.asyncio
+async def test_exists_true_when_match(
+    repo: UserRepository, users: list[User]
+) -> None:
+    assert await repo.exists(status="active") is True
+
+
+@pytest.mark.asyncio
+async def test_exists_false_when_no_match(
+    repo: UserRepository, users: list[User]
+) -> None:
+    assert await repo.exists(status="nonexistent") is False
+
+
+@pytest.mark.asyncio
+async def test_count_and_exists_on_composite_key_entity(
+    session: AsyncSession,
+) -> None:
+    repo = MembershipRepository(session)
+    await repo.save_all(
+        [
+            Membership(user_id=1, group_id=2, role="admin"),
+            Membership(user_id=1, group_id=3, role="member"),
+        ]
+    )
+
+    assert await repo.count() == 2
+    assert await repo.count(role="admin") == 1
+    assert await repo.exists(user_id=1, group_id=2) is True
+    assert await repo.exists(role="owner") is False

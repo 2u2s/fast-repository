@@ -159,3 +159,44 @@ def test_sync_find_all_excludes_soft_deleted(sync_session: Session) -> None:
 
     assert [a.id for a in repo.find_all()] == [kept.id]
     assert len(repo.find_all(with_deleted=True)) == 2
+
+
+@pytest.mark.asyncio
+async def test_count_excludes_soft_deleted_unless_requested(
+    session: AsyncSession,
+) -> None:
+    repo = ArticleRepository(session)
+    await repo.save_all([Article(title="a"), Article(title="b")])
+    gone = await repo.save(Article(title="c"))
+
+    await repo.delete(gone)
+
+    assert await repo.count() == 2
+    assert await repo.count(with_deleted=True) == 3
+
+
+@pytest.mark.asyncio
+async def test_exists_excludes_soft_deleted_unless_requested(
+    session: AsyncSession,
+) -> None:
+    repo = ArticleRepository(session)
+    article = await repo.save(Article(title="only"))
+
+    await repo.delete(article)
+
+    assert await repo.exists(id=article.id) is False
+    assert await repo.exists(id=article.id, with_deleted=True) is True
+
+
+@pytest.mark.asyncio
+async def test_find_all_order_by_excludes_soft_deleted(session: AsyncSession) -> None:
+    repo = ArticleRepository(session)
+    first = await repo.save(Article(title="a"))
+    second = await repo.save(Article(title="b"))
+    gone = await repo.save(Article(title="c"))
+
+    await repo.delete(gone)
+
+    found = await repo.find_all(order_by=Article.title.desc())
+
+    assert [a.id for a in found] == [second.id, first.id]

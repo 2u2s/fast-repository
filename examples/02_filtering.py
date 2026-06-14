@@ -1,4 +1,4 @@
-"""Filtering: keyword filters, operator suffixes, and pagination.
+"""Filtering: keyword filters, operator suffixes, ordering, pagination, count, exists.
 
 Run it::
 
@@ -17,7 +17,7 @@ from fast_repository import InvalidFilterError
 
 
 async def main() -> None:
-    """Query the seeded users with equality, operator, and pagination filters."""
+    """Query seeded users with filter operators, ordering, count, and exists."""
     async for session in make_session():
         repo = UserRepository(session)
         await seed(repo)
@@ -36,6 +36,13 @@ async def main() -> None:
         like = await repo.find_all(name__like="A%")
         print(f"name like A%: {[u.name for u in like]}")
 
+        # __ne and __notin negate a match.
+        not_active = await repo.find_all(status__ne="active")
+        print(f"status != active: {[u.name for u in not_active]}")
+
+        others = await repo.find_all(name__notin=["Ada", "Grace"])
+        print(f"name not in (Ada, Grace): {[u.name for u in others]}")
+
         # Positional arguments are raw SQLAlchemy expressions, combined with AND.
         young_or_old = await repo.find_all(or_(User.age < 40, User.age >= 80))
         print(f"age <40 or >=80: {[u.name for u in young_or_old]}")
@@ -48,9 +55,21 @@ async def main() -> None:
         active_seniors = await repo.find_all(User.age >= 60, status="active")
         print(f"active and >=60: {[u.name for u in active_seniors]}")
 
-        # Pagination returns a fastapi-pagination Page, ordered by primary key.
+        # order_by takes raw SQLAlchemy order expressions (single or list).
+        by_age = await repo.find_all(order_by=User.age.desc())
+        print(f"oldest first: {[(u.name, u.age) for u in by_age]}")
+
+        # Pagination returns a Page ordered by primary key; order_by is also accepted
+        # and the primary key is appended automatically as a tie-breaker.
         page = await repo.find_all_paginated(Params(page=1, size=2), status="active")
         print(f"page 1/size 2: {[u.name for u in page.items]} of {page.total} total")
+
+        # count() and exists() take the same filters as find_all.
+        active_count = await repo.count(status="active")
+        print(f"active count: {active_count}")
+
+        has_ada = await repo.exists(name="Ada")
+        print(f"Ada exists: {has_ada}")
 
         # A typo raises instead of silently returning unfiltered rows.
         try:

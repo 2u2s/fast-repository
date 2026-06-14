@@ -81,12 +81,13 @@ class SyncCRUDRepository(
     def find_all(
         self,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> list[EntityT]:
         """Find all entities matching the given criteria and filters."""
         result = self.session.scalars(
-            self._find_all_statement(criteria, filters, with_deleted)
+            self._find_all_statement(criteria, filters, order_by, with_deleted)
         )
         return list(result.unique().all())
 
@@ -94,14 +95,40 @@ class SyncCRUDRepository(
         self,
         params: AbstractParams | None = None,
         *criteria: ColumnElement[bool],
+        order_by: Any = None,
         with_deleted: bool = False,
         **filters: Any,
     ) -> Page[EntityT]:
         """Find a page of entities matching the given criteria and filters."""
         return paginate(
             self.session,
-            self._paginated_statement(criteria, filters, with_deleted),
+            self._paginated_statement(criteria, filters, order_by, with_deleted),
             params,
+        )
+
+    def count(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> int:
+        """Count entities matching the given criteria and filters."""
+        total = self.session.scalar(
+            self._count_statement(criteria, filters, with_deleted)
+        )
+        return total or 0
+
+    def exists(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> bool:
+        """Return whether any entity matches the given criteria and filters."""
+        return bool(
+            self.session.scalar(
+                self._exists_statement(criteria, filters, with_deleted)
+            )
         )
 
     def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:

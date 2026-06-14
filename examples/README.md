@@ -17,7 +17,7 @@ Run each from the project root:
 
 ```bash
 uv run python examples/01_basic_crud.py    # create, read, update, delete
-uv run python examples/02_filtering.py     # keyword filters, operators, expressions, pagination
+uv run python examples/02_filtering.py     # filters, operators, ordering, pagination, count/exists
 uv run python examples/03_transactions.py  # the autocommit flag (commit vs flush)
 uv run python examples/04_soft_delete.py   # soft delete, with_deleted, hard delete
 ```

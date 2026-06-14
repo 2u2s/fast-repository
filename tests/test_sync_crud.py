@@ -208,3 +208,46 @@ def test_init_without_entity_raises() -> None:
 
     with pytest.raises(TypeError):
         Broken(mock.Mock())
+
+
+def test_sync_find_all_orders_by_expression(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    found = sync_repo.find_all(order_by=User.age.desc())
+
+    assert [u.age for u in found] == sorted(
+        (u.age for u in sync_users), reverse=True
+    )
+
+
+def test_sync_find_all_paginated_applies_order_by(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    page = sync_repo.find_all_paginated(
+        Params(page=1, size=len(sync_users)), order_by=User.age.desc()
+    )
+
+    assert [u.age for u in page.items] == sorted(
+        (u.age for u in sync_users), reverse=True
+    )
+
+
+def test_sync_count_applies_filters(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    active = [u for u in sync_users if u.status == "active"]
+
+    assert sync_repo.count(status="active") == len(active)
+
+
+def test_sync_count_returns_total(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    assert sync_repo.count() == len(sync_users)
+
+
+def test_sync_exists_reflects_matches(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    assert sync_repo.exists(status="active") is True
+    assert sync_repo.exists(status="nonexistent") is False

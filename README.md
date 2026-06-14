@@ -48,7 +48,12 @@ await repo.find_all(status="active")              # ... WHERE status = 'active'
 await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
 await repo.find_all(age__ge=18, name__like="K%") # operator suffixes
 await repo.find_all(or_(User.age < 18, User.age >= 65))  # raw SQLAlchemy expressions
+await repo.find_all(status__ne="active")          # ... WHERE status != 'active'
+await repo.find_all(id__notin=[1, 2, 3])          # ... WHERE id NOT IN (1, 2, 3)
+await repo.find_all(order_by=User.age.desc())     # ... ORDER BY age DESC
 await repo.find_all_paginated(params=Params(page=1, size=50), status="active")
+await repo.count(status="active")                 # SELECT count(*) ... WHERE status = 'active'
+await repo.exists(id=1)                           # SELECT EXISTS(...) -> bool
 
 await repo.save(user)
 await repo.save_all(users)
@@ -62,6 +67,8 @@ await repo.delete_all(users)
 |-----------------------------------------|-------------------------|
 | `column=value`                          | `column = value`        |
 | `column__in=[a, b]`                     | `column IN (a, b)`      |
+| `column__notin=[a, b]`                  | `column NOT IN (a, b)`  |
+| `column__ne=value`                      | `column != value`       |
 | `column__gt` / `__ge` / `__lt` / `__le` | `>` / `>=` / `<` / `<=` |
 | `column__like` / `__ilike`              | `LIKE` / `ILIKE`        |
 | `column__is=None`                       | `IS NULL`               |

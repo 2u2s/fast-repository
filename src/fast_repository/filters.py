@@ -19,6 +19,8 @@ class InvalidFilterError(ValueError):
 
 _OPERATORS: dict[str, Callable[[Any, Any], Any]] = {
     "in": lambda column, value: column.in_(value),
+    "notin": lambda column, value: column.not_in(value),
+    "ne": lambda column, value: column != value,
     "gt": lambda column, value: column > value,
     "ge": lambda column, value: column >= value,
     "lt": lambda column, value: column < value,
@@ -37,7 +39,8 @@ def build_conditions(
 
     A bare ``column=value`` keyword translates to an equality condition.
     A ``column__operator`` keyword applies the named operator (``in``,
-    ``gt``, ``ge``, ``lt``, ``le``, ``like``, ``ilike``, ``is``). Exact
+    ``notin``, ``ne``, ``gt``, ``ge``, ``lt``, ``le``, ``like``, ``ilike``,
+    ``is``). Exact
     column names take precedence, so a column whose name contains ``__``
     is still addressable.
 

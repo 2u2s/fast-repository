@@ -24,14 +24,18 @@ Append `__operator` to a column name to apply an operator:
 | Keyword                                 | SQL                     |
 |-----------------------------------------|-------------------------|
 | `column=value`                          | `column = value`        |
+| `column__ne=value`                      | `column != value`       |
 | `column__in=[a, b]`                     | `column IN (a, b)`      |
+| `column__notin=[a, b]`                  | `column NOT IN (a, b)`  |
 | `column__gt` / `__ge` / `__lt` / `__le` | `>` / `>=` / `<` / `<=` |
 | `column__like` / `__ilike`              | `LIKE` / `ILIKE`        |
 | `column__is=None`                       | `IS NULL`               |
 
 ```python
 await repo.find_all(age__ge=18)             # WHERE age >= 18
+await repo.find_all(status__ne="active")    # WHERE status != 'active'
 await repo.find_all(id__in=[1, 2, 3])       # WHERE id IN (1, 2, 3)
+await repo.find_all(id__notin=[1, 2, 3])    # WHERE id NOT IN (1, 2, 3)
 await repo.find_all(name__like="K%")        # WHERE name LIKE 'K%'
 await repo.find_all(deleted_at__is=None)    # WHERE deleted_at IS NULL
 ```
@@ -65,6 +69,20 @@ await repo.find_all(or_(User.age < 18, User.age >= 65), status="active")
 ```python
 await repo.find_all_paginated(Params(page=1, size=50), User.age >= 30)
 ```
+
+## Ordering
+
+`find_all` and `find_all_paginated` accept an `order_by` keyword that takes raw
+SQLAlchemy order expressions — either a single expression or a list:
+
+```python
+await repo.find_all(order_by=User.age.desc())
+await repo.find_all(order_by=[User.status, User.age.desc()])
+```
+
+`find_all_paginated` always appends the primary key as a tie-breaker after any
+`order_by` expressions you supply, so paging is stable across requests. When
+`order_by` is omitted, pagination orders by primary key alone.
 
 ## Unknown filters raise
 
@@ -127,7 +145,9 @@ ignore it.
 ## Pagination
 
 `find_all_paginated` accepts the same filters and returns a fastapi-pagination
-`Page`, ordered by primary key:
+`Page`. Results are ordered by primary key by default; pass `order_by` to
+supply your own ordering (the primary key is always appended as a tie-breaker —
+see [Ordering](#ordering)):
 
 ```python
 from fastapi_pagination import Params
@@ -139,3 +159,14 @@ page.total   # total matching rows
 
 When `params` is omitted, they are resolved from the current FastAPI request
 context.
+
+## Counting and existence
+
+`count` and `exists` take the same positional expressions and keyword filters
+as `find_all` (ordering does not apply to them) and respect the soft-delete
+filter; they also support `with_deleted=True`:
+
+```python
+await repo.count(status="active")     # number of matching rows
+await repo.exists(email="a@b.com")    # True if any row matches
+```

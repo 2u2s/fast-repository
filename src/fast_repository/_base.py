@@ -19,7 +19,7 @@ from typing import (
     get_origin,
 )
 
-from sqlalchemy import and_, inspect, select
+from sqlalchemy import and_, func, inspect, select
 from sqlalchemy.orm import DeclarativeBase
 
 from .filters import build_conditions
@@ -144,6 +144,16 @@ class _BaseCRUDRepository(Generic[EntityT]):
         """Set the soft-delete column on an entity in place."""
         setattr(entity, self._soft_delete_column, self._soft_delete_value())
 
+    def _normalize_order_by(
+        self, order_by: Any
+    ) -> tuple[ColumnElement[Any], ...]:
+        """Normalize an ``order_by`` argument into a tuple of expressions."""
+        if order_by is None:
+            return ()
+        if isinstance(order_by, (list, tuple)):
+            return tuple(order_by)
+        return (order_by,)
+
     def _find_statement(
         self,
         pk: Any,
@@ -188,6 +198,7 @@ class _BaseCRUDRepository(Generic[EntityT]):
         self,
         criteria: tuple[ColumnElement[bool], ...],
         filters: dict[str, Any],
+        order_by: Any,
         with_deleted: bool,
     ) -> Select[tuple[Any]]:
         """Build the select for a filtered collection read."""
@@ -199,24 +210,66 @@ class _BaseCRUDRepository(Generic[EntityT]):
         stmt = self.stmt
         if conditions:
             stmt = stmt.where(*conditions)
+        order_exprs = self._normalize_order_by(order_by)
+        if order_exprs:
+            stmt = stmt.order_by(*order_exprs)
         return stmt
 
     def _paginated_statement(
         self,
         criteria: tuple[ColumnElement[bool], ...],
         filters: dict[str, Any],
+        order_by: Any,
         with_deleted: bool,
     ) -> Select[tuple[Any]]:
-        """Build the select for a paginated read, ordered by primary key."""
+        """Build the select for a paginated read.
+
+        User-supplied ``order_by`` expressions are applied first, then the
+        primary key is appended as a deterministic tie-breaker. With no
+        ``order_by`` the rows are ordered by primary key alone.
+        """
         conditions = (
             *criteria,
             *build_conditions(self._entity_cls, filters),
             *self._alive_conditions(with_deleted),
         )
-        stmt = self.stmt.order_by(*self._pks)
+        order_exprs = self._normalize_order_by(order_by)
+        # always order by at least the primary key for deterministic paging
+        stmt = self.stmt.order_by(*order_exprs, *self._pks)
         if conditions:
             stmt = stmt.where(*conditions)
         return stmt
+
+    def _count_statement(
+        self,
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+        with_deleted: bool,
+    ) -> Select[tuple[int]]:
+        """Build a ``SELECT count(*)`` over the filtered base statement.
+
+        Any ordering on the base statement is removed, and ORM eager-loader
+        options are dropped when the inner query is wrapped as a subquery. The
+        base statement's own ``where`` conditions and the soft-delete filter are
+        preserved.
+        """
+        inner = self._find_all_statement(criteria, filters, None, with_deleted)
+        return select(func.count()).select_from(inner.order_by(None).subquery())
+
+    def _exists_statement(
+        self,
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+        with_deleted: bool,
+    ) -> Select[tuple[bool]]:
+        """Build a ``SELECT EXISTS(...)`` over the filtered base statement.
+
+        Mirrors ``_count_statement``: the base statement's ``where`` conditions
+        and the soft-delete filter are preserved, while ordering and ORM
+        eager-loader options are irrelevant to an existence check.
+        """
+        inner = self._find_all_statement(criteria, filters, None, with_deleted)
+        return select(inner.order_by(None).exists())
 
     def _alive_conditions(self, with_deleted: bool) -> tuple[ColumnElement[bool], ...]:
         """The non-deleted filter as a tuple, empty when it does not apply."""
