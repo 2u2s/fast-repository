@@ -2,6 +2,11 @@
 
 **English** | [한국어](https://github.com/2u2s/fast-repository/blob/main/README.ko.md)
 
+[![PyPI](https://img.shields.io/pypi/v/fast-repository)](https://pypi.org/project/fast-repository/)
+[![Python](https://img.shields.io/pypi/pyversions/fast-repository)](https://pypi.org/project/fast-repository/)
+[![License](https://img.shields.io/pypi/l/fast-repository)](https://github.com/2u2s/fast-repository/blob/main/LICENSE)
+[![Downloads](https://static.pepy.tech/badge/fast-repository/month)](https://pepy.tech/project/fast-repository)
+
 Interface-first repository pattern for FastAPI + SQLAlchemy.
 
 Declare the repository interface, get the implementation for free.
@@ -10,7 +15,79 @@ Declare the repository interface, get the implementation for free.
 
 A repository keeps your domain layer depending on abstractions, but writing
 the same CRUD implementation for every entity is boilerplate.
-`fast-repository` removes that boilerplate while keeping the pattern intact:
+
+**Before** — hand-written, and repeated for every entity:
+
+```python
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase): ...
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    age: Mapped[int]
+    status: Mapped[str]
+
+
+class UserRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def find(self, id: int) -> User | None:
+        return await self.session.scalar(select(User).where(User.id == id))
+
+    async def find_all(
+        self,
+        name: str | None = None,
+        age: int | None = None,
+        status: str | None = None,
+    ) -> list[User]:
+        stmt = select(User)
+        if name is not None:
+            stmt = stmt.where(User.name == name)
+        if age is not None:
+            stmt = stmt.where(User.age == age)
+        if status is not None:
+            stmt = stmt.where(User.status == status)
+        return list((await self.session.scalars(stmt)).all())
+
+    async def count(
+        self,
+        name: str | None = None,
+        age: int | None = None,
+        status: str | None = None,
+    ) -> int:
+        stmt = select(func.count()).select_from(User)
+        if name is not None:
+            stmt = stmt.where(User.name == name)
+        if age is not None:
+            stmt = stmt.where(User.age == age)
+        if status is not None:
+            stmt = stmt.where(User.status == status)
+        return await self.session.scalar(stmt) or 0
+
+    async def save(self, user: User) -> User:
+        self.session.add(user)
+        await self.session.commit()
+        return user
+
+    async def delete(self, user: User) -> None:
+        await self.session.delete(user)
+        await self.session.commit()
+
+    # ...and exists(), save_all(), delete_all(), find_all_paginated(),
+    #    operator filters (__in / __ne / __like), row locking, soft delete —
+    #    all written again for every entity.
+```
+
+**After** — `fast-repository` provides all of the above, pattern intact:
 
 ```python
 from abc import ABC
@@ -93,6 +170,43 @@ class UserRepository(
 
 When omitted, reads default to `select(User)`. For runtime customization you
 can also assign `self.stmt` on an instance.
+
+### Typed filters for IDE autocomplete
+
+`find_all`, `count`, and the other read methods take arbitrary keyword filters,
+so a type checker can't suggest your entity's columns by name. To get IDE autocomplete,
+re-declare the method on your interface like this:
+
+```python
+from sqlalchemy.sql import ColumnElement
+
+
+class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+    @abstractmethod
+    async def find_all(
+        self,
+        *criteria: ColumnElement[bool],
+        status: str | None = None,
+        **_,
+    ) -> list[User]: ...
+```
+
+Wherever a value is typed as `AbstractUserRepository`, the editor now suggests `status=`.
+Expose more filters by adding more keywords:
+
+```python
+class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+    @abstractmethod
+    async def find_all(
+        self,
+        *criteria: ColumnElement[bool],
+        status: str | None = None,
+        age: int | None = None,
+        **_,
+    ) -> list[User]: ...
+```
+
+This takes effect only when the variable is typed as the interface.
 
 ### Pagination with FastAPI
 

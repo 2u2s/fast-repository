@@ -2,6 +2,11 @@
 
 [English](https://github.com/2u2s/fast-repository/blob/main/README.md) | **한국어**
 
+[![PyPI](https://img.shields.io/pypi/v/fast-repository)](https://pypi.org/project/fast-repository/)
+[![Python](https://img.shields.io/pypi/pyversions/fast-repository)](https://pypi.org/project/fast-repository/)
+[![License](https://img.shields.io/pypi/l/fast-repository)](https://github.com/2u2s/fast-repository/blob/main/LICENSE)
+[![Downloads](https://static.pepy.tech/badge/fast-repository/month)](https://pepy.tech/project/fast-repository)
+
 FastAPI + SQLAlchemy를 위한 interface-first 레포지토리 패턴.
 
 레포지토리 인터페이스만 선언하면 구현은 저절로 따라옵니다.
@@ -9,7 +14,79 @@ FastAPI + SQLAlchemy를 위한 interface-first 레포지토리 패턴.
 ## 필요성
 
 레포지토리 패턴은 도메인 계층이 추상에 의존하도록 유지해 주지만, 엔티티마다 동일한 CRUD 구현을 반복 작성하는 것은 상당한 보일러플레이트입니다.
-`fast-repository`는 패턴을 그대로 유지하면서 그 보일러플레이트를 제거합니다:
+
+**Before** — 코드를 직접 작성하고, 엔티티마다 반복합니다:
+
+```python
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase): ...
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    age: Mapped[int]
+    status: Mapped[str]
+
+
+class UserRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def find(self, id: int) -> User | None:
+        return await self.session.scalar(select(User).where(User.id == id))
+
+    async def find_all(
+        self,
+        name: str | None = None,
+        age: int | None = None,
+        status: str | None = None,
+    ) -> list[User]:
+        stmt = select(User)
+        if name is not None:
+            stmt = stmt.where(User.name == name)
+        if age is not None:
+            stmt = stmt.where(User.age == age)
+        if status is not None:
+            stmt = stmt.where(User.status == status)
+        return list((await self.session.scalars(stmt)).all())
+
+    async def count(
+        self,
+        name: str | None = None,
+        age: int | None = None,
+        status: str | None = None,
+    ) -> int:
+        stmt = select(func.count()).select_from(User)
+        if name is not None:
+            stmt = stmt.where(User.name == name)
+        if age is not None:
+            stmt = stmt.where(User.age == age)
+        if status is not None:
+            stmt = stmt.where(User.status == status)
+        return await self.session.scalar(stmt) or 0
+
+    async def save(self, user: User) -> User:
+        self.session.add(user)
+        await self.session.commit()
+        return user
+
+    async def delete(self, user: User) -> None:
+        await self.session.delete(user)
+        await self.session.commit()
+
+    # ...그리고 exists(), save_all(), delete_all(), find_all_paginated(),
+    #    연산자 필터(__in / __ne / __like), 행 잠금, 소프트 삭제까지 —
+    #    엔티티마다 전부 다시 작성해야 합니다.
+```
+
+**After** — `fast-repository`가 위의 모든 것을 패턴 그대로 제공합니다:
 
 ```python
 from abc import ABC
@@ -76,7 +153,7 @@ await repo.delete_all(users)
 
 ### 쿼리 커스터마이징
 
-기본 `stmt`를 선언하여 관계 로딩 방식을 변경하거나, 모든 읽기 작업에 기본 필터를 적용할 수 있습니다. 클래스 키워드 인수로 전달합니다:
+기본 `stmt`를 선언하여 관계 로딩 방식을 변경하거나, 모든 조회 작업에 기본 필터를 적용할 수 있습니다. 클래스 키워드 인수로 전달합니다:
 
 ```python
 class UserRepository(
@@ -86,7 +163,43 @@ class UserRepository(
     ...
 ```
 
-`stmt`를 생략하면 읽기 작업은 기본적으로 `select(User)`를 사용합니다. 런타임에 동적으로 변경하려면 인스턴스에서 `self.stmt`를 직접 할당할 수 있습니다.
+`stmt`를 생략하면 조회 작업은 기본적으로 `select(User)`를 사용합니다. 런타임에 동적으로 변경하려면 인스턴스에서 `self.stmt`를 직접 할당할 수 있습니다.
+
+### IDE 자동완성을 위한 타입 필터
+
+`find_all`, `count` 등 조회 메서드는 임의의 키워드 필터를 받기 때문에, 타입 체커가 엔티티의 컬럼을 이름으로 제안해 주지 못합니다.
+IDE 자동완성 기능을 사용하고 싶다면, 인터페이스 클래스에서 해당 메서드를 다음과 같이 재선언합니다.
+
+```python
+from sqlalchemy.sql import ColumnElement
+
+
+class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+    @abstractmethod
+    async def find_all(
+        self,
+        *criteria: ColumnElement[bool],
+        status: str | None = None,
+        **_,
+    ) -> list[User]: ...
+```
+
+이제 값이 `AbstractUserRepository` 타입으로 선언된 곳이라면 에디터가 `status=`를 제안합니다.
+더 많은 필터를 노출하려면 키워드를 추가하면 됩니다:
+
+```python
+class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+    @abstractmethod
+    async def find_all(
+        self, 
+        *criteria: ColumnElement[bool],
+        status: str | None = None,
+        age: int | None = None,
+        **_,
+    ) -> list[User]: ...
+```
+
+이 효과는 변수가 **인터페이스 타입**으로 선언됐을 때만 적용됩니다.
 
 ### FastAPI에서의 페이지네이션
 
@@ -112,7 +225,7 @@ add_pagination(app)
 
 - [시작하기](https://github.com/2u2s/fast-repository/blob/main/docs/ko/getting-started.md) — 설치, 엔티티 정의, 레포지토리 연결 방법.
 - [필터링](https://github.com/2u2s/fast-repository/blob/main/docs/ko/filtering.md) — 키워드 필터, 연산자 접미사, 기본 키 조회, 페이지네이션.
-- [쿼리 커스터마이징](https://github.com/2u2s/fast-repository/blob/main/docs/ko/customizing-queries.md) — 관계를 즉시 로드(eager-load)하거나 모든 읽기에 기본 필터를 적용하는 방법.
+- [쿼리 커스터마이징](https://github.com/2u2s/fast-repository/blob/main/docs/ko/customizing-queries.md) — 관계를 즉시 로드(eager-load)하거나 모든 조회에 기본 필터를 적용하는 방법.
 - [트랜잭션](https://github.com/2u2s/fast-repository/blob/main/docs/ko/transactions.md) — `autocommit` 플래그로 커밋을 제어하고 작업을 단위 작업(unit of work)으로 묶는 방법.
 - [소프트 삭제](https://github.com/2u2s/fast-repository/blob/main/docs/ko/soft-delete.md) — 행을 실제로 삭제하는 대신 삭제 표시를 남기는 방법.
 
