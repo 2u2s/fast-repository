@@ -1,5 +1,7 @@
 # Soft delete
 
+**English** | [한국어](../ko/soft-delete.md)
+
 By default `delete` removes rows. Opt into soft deletion and `delete` instead
 marks rows as deleted, while reads transparently hide them.
 

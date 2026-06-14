@@ -1,5 +1,7 @@
 # Transactions
 
+**English** | [한국어](../ko/transactions.md)
+
 The write methods — `save`, `save_all`, `delete`, `delete_all` — commit by
 default. Pass `autocommit=False` to keep the transaction open and commit it
 yourself, which is how you group several operations into one unit of work.
@@ -45,16 +47,6 @@ await accounts.session.commit()   # both, or neither on error
 In FastAPI this often lives in the dependency that yields the session — the
 route handlers call the repository with `autocommit=False`, and the dependency
 commits when the request finishes.
-
-## Soft delete and hard delete
-
-When a repository has [soft delete](soft-delete.md) enabled, `delete` marks the
-row instead of removing it but still respects `autocommit`:
-
-```python
-await repo.delete(article, autocommit=False)  # marks deleted_at, no commit
-await repo.delete(article, hard=True)          # physical DELETE
-```
 
 ## Row locking
 

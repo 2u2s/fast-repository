@@ -144,9 +144,7 @@ class _BaseCRUDRepository(Generic[EntityT]):
         """Set the soft-delete column on an entity in place."""
         setattr(entity, self._soft_delete_column, self._soft_delete_value())
 
-    def _normalize_order_by(
-        self, order_by: Any
-    ) -> tuple[ColumnElement[Any], ...]:
+    def _normalize_order_by(self, order_by: Any) -> tuple[ColumnElement[Any], ...]:
         """Normalize an ``order_by`` argument into a tuple of expressions."""
         if order_by is None:
             return ()

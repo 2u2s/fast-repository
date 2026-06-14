@@ -530,9 +530,7 @@ async def test_find_all_orders_by_single_expression(
 ) -> None:
     found = await repo.find_all(order_by=User.age.desc())
 
-    assert [u.age for u in found] == sorted(
-        (u.age for u in users), reverse=True
-    )
+    assert [u.age for u in found] == sorted((u.age for u in users), reverse=True)
 
 
 @pytest.mark.asyncio
@@ -562,30 +560,24 @@ async def test_find_all_paginated_applies_order_by(
         Params(page=1, size=len(users)), order_by=User.age.desc()
     )
 
-    assert [u.age for u in page.items] == sorted(
-        (u.age for u in users), reverse=True
-    )
+    assert [u.age for u in page.items] == sorted((u.age for u in users), reverse=True)
 
 
 def test_paginated_statement_appends_pk_tiebreaker(repo: UserRepository) -> None:
     stmt = repo._paginated_statement((), {}, User.status, False)
 
     sql = str(stmt.compile(dialect=postgresql.dialect()))
-    order_clause = sql[sql.index("ORDER BY"):]
+    order_clause = sql[sql.index("ORDER BY") :]
     assert order_clause.index("users.status") < order_clause.index("users.id")
 
 
 @pytest.mark.asyncio
-async def test_count_returns_total(
-    repo: UserRepository, users: list[User]
-) -> None:
+async def test_count_returns_total(repo: UserRepository, users: list[User]) -> None:
     assert await repo.count() == len(users)
 
 
 @pytest.mark.asyncio
-async def test_count_applies_filters(
-    repo: UserRepository, users: list[User]
-) -> None:
+async def test_count_applies_filters(repo: UserRepository, users: list[User]) -> None:
     active = [u for u in users if u.status == "active"]
 
     assert await repo.count(status="active") == len(active)
@@ -615,9 +607,7 @@ async def test_count_applies_positional_criterion(
 
 
 @pytest.mark.asyncio
-async def test_exists_true_when_match(
-    repo: UserRepository, users: list[User]
-) -> None:
+async def test_exists_true_when_match(repo: UserRepository, users: list[User]) -> None:
     assert await repo.exists(status="active") is True
 
 

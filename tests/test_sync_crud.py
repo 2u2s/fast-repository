@@ -215,9 +215,7 @@ def test_sync_find_all_orders_by_expression(
 ) -> None:
     found = sync_repo.find_all(order_by=User.age.desc())
 
-    assert [u.age for u in found] == sorted(
-        (u.age for u in sync_users), reverse=True
-    )
+    assert [u.age for u in found] == sorted((u.age for u in sync_users), reverse=True)
 
 
 def test_sync_find_all_paginated_applies_order_by(

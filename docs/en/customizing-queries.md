@@ -1,17 +1,17 @@
 # Customizing queries
 
+**English** | [한국어](../ko/customizing-queries.md)
+
 Every read method (`find`, `find_all`, `find_all_paginated`) builds on a base
 select statement, `stmt`. It defaults to `select(YourEntity)`. Override it to
 eager-load relationships or apply a filter to every read.
 
 > **Note:** This applies equally to `SyncCRUDRepository`. The examples use
-> `CRUDRepository`, but `stmt` customization is defined on the shared base, so
-> swap in `SyncCRUDRepository` and it behaves the same.
+> `CRUDRepository`, but swap in `SyncCRUDRepository` and it behaves the same.
 
 ## At class-definition time
 
-Pass `stmt` as a class keyword argument. This is the common case — the
-customization belongs to the repository, not to one call site:
+Pass `stmt` as a class keyword argument. 
 
 ```python
 from sqlalchemy import select
@@ -43,18 +43,6 @@ class ActiveUserRepository(
 
 `find_all()` on this repository returns only active users, and keyword filters
 are added on top of the base condition.
-
-## Per instance
-
-For runtime customization, assign `self.stmt` on an instance. It only affects
-that instance:
-
-```python
-repo = UserRepository(session)
-repo.stmt = select(User).where(User.status == "active")
-
-await repo.find_all()  # only active users
-```
 
 ## How filters compose
 

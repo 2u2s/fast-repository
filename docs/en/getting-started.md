@@ -1,5 +1,7 @@
 # Getting Started
 
+**English** | [한국어](../ko/getting-started.md)
+
 This guide takes you from installation to a working repository.
 
 ## Install
@@ -115,4 +117,4 @@ customization all work the same as the async repository.
   apply a default filter to every read.
 - [Transactions](transactions.md) — control commit with the `autocommit` flag.
 - [Soft delete](soft-delete.md) — mark rows deleted instead of removing them.
-- [Runnable examples](../examples/README.md) — scripts and a small FastAPI app.
+- [Runnable examples](../../examples/README.md) — scripts and a small FastAPI app.

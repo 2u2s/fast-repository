@@ -126,9 +126,7 @@ class SyncCRUDRepository(
     ) -> bool:
         """Return whether any entity matches the given criteria and filters."""
         return bool(
-            self.session.scalar(
-                self._exists_statement(criteria, filters, with_deleted)
-            )
+            self.session.scalar(self._exists_statement(criteria, filters, with_deleted))
         )
 
     def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
