@@ -50,7 +50,7 @@ await repo.find_all(or_(User.age < 18, User.age >= 65))  # raw SQLAlchemy 표현
 await repo.find_all(status__ne="active")          # ... WHERE status != 'active'
 await repo.find_all(id__notin=[1, 2, 3])          # ... WHERE id NOT IN (1, 2, 3)
 await repo.find_all(order_by=User.age.desc())     # ... ORDER BY age DESC
-await repo.find_all_paginated(params=Params(page=1, size=50), status="active")
+await repo.find_all_paginated(params=Params(page=1, size=50), status="active")  # FastAPI에선 params 생략 가능
 await repo.count(status="active")                 # SELECT count(*) ... WHERE status = 'active'
 await repo.exists(id=1)                           # SELECT EXISTS(...) -> bool
 
@@ -87,6 +87,26 @@ class UserRepository(
 ```
 
 `stmt`를 생략하면 읽기 작업은 기본적으로 `select(User)`를 사용합니다. 런타임에 동적으로 변경하려면 인스턴스에서 `self.stmt`를 직접 할당할 수 있습니다.
+
+### FastAPI에서의 페이지네이션
+
+FastAPI 라우트 안에서는 `params`를 직접 넘길 필요가 없습니다.
+`response_model`이 `Page[...]`이고 `add_pagination(app)`이 연결되어 있으면,
+fastapi-pagination이 쿼리 문자열의 `?page=`/`?size=`를 파싱하고 `find_all_paginated`가 이를 자동으로 가져옵니다.
+
+```python
+from fastapi import FastAPI
+from fastapi_pagination import Page, add_pagination
+
+app = FastAPI()
+
+@app.get("/users", response_model=Page[UserOut])
+async def list_users(repo: UserRepo, status: str | None = None) -> Page[User]:
+    filters = {"status": status} if status is not None else {}
+    return await repo.find_all_paginated(**filters)  # params는 자동으로 주입
+
+add_pagination(app)
+```
 
 ## 문서
 

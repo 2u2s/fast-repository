@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi_pagination import Page, Params, add_pagination
+from fastapi_pagination import Page, add_pagination
 from models import AbstractUserRepository, Base, User, UserRepository
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import (
@@ -100,12 +100,11 @@ async def read_user(user_id: int, repo: UserRepo) -> User:
 @app.get("/users", response_model=Page[UserOut])
 async def list_users(
     repo: UserRepo,
-    params: Annotated[Params, Depends()],
     status: str | None = None,
 ) -> Page[User]:
     """List users, optionally filtered by status, one page at a time."""
     filters = {"status": status} if status is not None else {}
-    return await repo.find_all_paginated(params, **filters)
+    return await repo.find_all_paginated(**filters)
 
 
 @app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

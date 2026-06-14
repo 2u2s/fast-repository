@@ -53,7 +53,7 @@ await repo.find_all(or_(User.age < 18, User.age >= 65))  # raw SQLAlchemy expres
 await repo.find_all(status__ne="active")          # ... WHERE status != 'active'
 await repo.find_all(id__notin=[1, 2, 3])          # ... WHERE id NOT IN (1, 2, 3)
 await repo.find_all(order_by=User.age.desc())     # ... ORDER BY age DESC
-await repo.find_all_paginated(params=Params(page=1, size=50), status="active")
+await repo.find_all_paginated(params=Params(page=1, size=50), status="active")  # params optional under FastAPI
 await repo.count(status="active")                 # SELECT count(*) ... WHERE status = 'active'
 await repo.exists(id=1)                           # SELECT EXISTS(...) -> bool
 
@@ -93,6 +93,27 @@ class UserRepository(
 
 When omitted, reads default to `select(User)`. For runtime customization you
 can also assign `self.stmt` on an instance.
+
+### Pagination with FastAPI
+
+Inside a FastAPI route you do not need to pass `params` at all. When the
+response model is a `Page[...]` and `add_pagination(app)` is wired up,
+fastapi-pagination parses `?page=`/`?size=` from the query string and
+`find_all_paginated` picks them up automatically:
+
+```python
+from fastapi import FastAPI
+from fastapi_pagination import Page, add_pagination
+
+app = FastAPI()
+
+@app.get("/users", response_model=Page[UserOut])
+async def list_users(repo: UserRepo, status: str | None = None) -> Page[User]:
+    filters = {"status": status} if status is not None else {}
+    return await repo.find_all_paginated(**filters)  # params injected from the request
+
+add_pagination(app)
+```
 
 ## Documentation
 
