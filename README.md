@@ -92,10 +92,10 @@ class UserRepository:
 ```python
 from abc import ABC
 
-from fast_repository import AbstractCRUDRepository, CRUDRepository
+from fast_repository import CRUDRepositoryInterface, CRUDRepository
 
 # Domain layer: depend on this interface.
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC): ...
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC): ...
 
 # Infrastructure layer: zero boilerplate, all CRUD methods provided.
 class UserRepository(CRUDRepository[User], AbstractUserRepository): ...
@@ -105,7 +105,7 @@ The entity class is captured from the generic argument (`CRUDRepository[User]`)
 at class-definition time — no constructor wiring, no metaclass tricks to learn.
 
 Using a synchronous `Session`? `SyncCRUDRepository` and
-`AbstractSyncCRUDRepository` offer the same API without `async`/`await`.
+`SyncCRUDRepositoryInterface` offer the same API without `async`/`await`.
 
 ## Installation
 
@@ -181,7 +181,7 @@ re-declare the method on your interface like this:
 from sqlalchemy.sql import ColumnElement
 
 
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     @abstractmethod
     async def find_all(
         self,
@@ -195,7 +195,7 @@ Wherever a value is typed as `AbstractUserRepository`, the editor now suggests `
 Expose more filters by adding more keywords:
 
 ```python
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     @abstractmethod
     async def find_all(
         self,

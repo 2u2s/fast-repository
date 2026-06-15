@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from fast_repository import AbstractCRUDRepository, CRUDRepository
+from fast_repository import CRUDRepository, CRUDRepositoryInterface
 
 
 class Base(DeclarativeBase):
@@ -36,7 +36,7 @@ class User(Base):
     age: Mapped[int]
 
 
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     """Domain-facing interface — depend on this from your business logic."""
 
 

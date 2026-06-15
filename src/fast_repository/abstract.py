@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 
 
-class AbstractCRUDRepository(ABC, Generic[EntityT]):
+class CRUDRepositoryInterface(ABC, Generic[EntityT]):
     """Interface for CRUD repositories.
 
     Declare a domain-facing repository interface by subclassing this class, then obtain
@@ -28,7 +28,7 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
     Example:
         Declare the interface in the domain layer::
 
-            class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+            class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
                 ...
 
         Implement it in the infrastructure layer with zero boilerplate::
@@ -266,17 +266,17 @@ class AbstractCRUDRepository(ABC, Generic[EntityT]):
         """
 
 
-class AbstractSyncCRUDRepository(ABC, Generic[EntityT]):
+class SyncCRUDRepositoryInterface(ABC, Generic[EntityT]):
     """Interface for synchronous CRUD repositories.
 
-    The synchronous counterpart to ``AbstractCRUDRepository``. Declare a
+    The synchronous counterpart to ``CRUDRepositoryInterface``. Declare a
     domain-facing interface by subclassing this class, then obtain a working
     implementation by subclassing ``SyncCRUDRepository`` with the same entity.
 
     Example:
         Declare the interface in the domain layer::
 
-            class AbstractUserRepository(AbstractSyncCRUDRepository[User], ABC):
+            class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
                 ...
 
         Implement it in the infrastructure layer with zero boilerplate::

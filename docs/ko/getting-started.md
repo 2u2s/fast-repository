@@ -38,16 +38,16 @@ class User(Base):
 
 ## 2. 인터페이스 선언
 
-`AbstractCRUDRepository`를 엔티티와 함께 서브클래싱합니다.
+`CRUDRepositoryInterface`를 엔티티와 함께 서브클래싱합니다.
 이것이 도메인 레이어가 의존하는 타입으로, SQLAlchemy에 대해 아무것도 알 필요가 없습니다:
 
 ```python
 from abc import ABC
 
-from fast_repository import AbstractCRUDRepository
+from fast_repository import CRUDRepositoryInterface
 
 
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     ...
 ```
 
@@ -85,13 +85,13 @@ await repo.delete(user)
 
 ## 동기 레포지토리
 
-동기 방식의 `Session`을 선호한다면 `SyncCRUDRepository`와 `AbstractSyncCRUDRepository`를 사용합니다. API는 동일하며 `async`/`await`만 없습니다:
+동기 방식의 `Session`을 선호한다면 `SyncCRUDRepository`와 `SyncCRUDRepositoryInterface`를 사용합니다. API는 동일하며 `async`/`await`만 없습니다:
 
 ```python
-from fast_repository import AbstractSyncCRUDRepository, SyncCRUDRepository
+from fast_repository import SyncCRUDRepositoryInterface, SyncCRUDRepository
 
 
-class AbstractUserRepository(AbstractSyncCRUDRepository[User], ABC):
+class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
     ...
 
 

@@ -36,16 +36,16 @@ class User(Base):
 
 ## 2. Declare the interface
 
-Subclass `AbstractCRUDRepository` with your entity. This is the type your
+Subclass `CRUDRepositoryInterface` with your entity. This is the type your
 domain layer depends on — it knows nothing about SQLAlchemy:
 
 ```python
 from abc import ABC
 
-from fast_repository import AbstractCRUDRepository
+from fast_repository import CRUDRepositoryInterface
 
 
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     ...
 ```
 
@@ -85,13 +85,13 @@ await repo.delete(user)
 ## Synchronous repositories
 
 Prefer a synchronous `Session`? Use `SyncCRUDRepository` and
-`AbstractSyncCRUDRepository`. The API is identical — just without `async`/`await`:
+`SyncCRUDRepositoryInterface`. The API is identical — just without `async`/`await`:
 
 ```python
-from fast_repository import AbstractSyncCRUDRepository, SyncCRUDRepository
+from fast_repository import SyncCRUDRepositoryInterface, SyncCRUDRepository
 
 
-class AbstractUserRepository(AbstractSyncCRUDRepository[User], ABC):
+class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
     ...
 
 

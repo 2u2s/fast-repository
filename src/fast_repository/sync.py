@@ -9,7 +9,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import DeclarativeBase
 
 from ._base import _UNSET, _BaseCRUDRepository
-from .abstract import AbstractSyncCRUDRepository
+from .abstract import SyncCRUDRepositoryInterface
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -25,7 +25,7 @@ EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 
 class SyncCRUDRepository(
     _BaseCRUDRepository[EntityT],
-    AbstractSyncCRUDRepository[EntityT],
+    SyncCRUDRepositoryInterface[EntityT],
     Generic[EntityT],
 ):
     """Ready-made synchronous CRUD repository for a SQLAlchemy entity.

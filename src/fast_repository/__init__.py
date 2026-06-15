@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from .abstract import AbstractCRUDRepository, AbstractSyncCRUDRepository
+from .abstract import CRUDRepositoryInterface, SyncCRUDRepositoryInterface
 from .crud import CRUDRepository
 from .filters import InvalidFilterError
 from .locking import DbLockInfo
 from .sync import SyncCRUDRepository
 
 __all__ = [
-    "AbstractCRUDRepository",
-    "AbstractSyncCRUDRepository",
     "CRUDRepository",
+    "CRUDRepositoryInterface",
     "DbLockInfo",
     "InvalidFilterError",
     "SyncCRUDRepository",
+    "SyncCRUDRepositoryInterface",
 ]

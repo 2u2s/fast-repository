@@ -8,10 +8,10 @@ from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from fast_repository import (
-    AbstractCRUDRepository,
-    AbstractSyncCRUDRepository,
     CRUDRepository,
+    CRUDRepositoryInterface,
     SyncCRUDRepository,
+    SyncCRUDRepositoryInterface,
 )
 
 
@@ -41,7 +41,7 @@ class Membership(Base):
     role: Mapped[str]
 
 
-class AbstractUserRepository(AbstractCRUDRepository[User], ABC):
+class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     """Domain-facing interface for user repositories."""
 
 
@@ -53,7 +53,7 @@ class MembershipRepository(CRUDRepository[Membership]):
     """Repository for the composite-key entity."""
 
 
-class AbstractSyncUserRepository(AbstractSyncCRUDRepository[User], ABC):
+class AbstractSyncUserRepository(SyncCRUDRepositoryInterface[User], ABC):
     """Domain-facing interface for synchronous user repositories."""
 
 
