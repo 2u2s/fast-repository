@@ -10,7 +10,7 @@ so each piece of the integration is easy to find.
 | File              | Responsibility                                                      |
 |-------------------|---------------------------------------------------------------------|
 | `database.py`     | Engine, session maker, `lifespan`, and the `get_session` dependency |
-| `dependencies.py` | Builds the repository and exposes it as the abstract type           |
+| `dependencies.py` | Builds the repository and exposes it as the interface type           |
 | `dtos.py`         | Pydantic request/response models and the list-query parameters      |
 | `routers.py`      | The `/users` endpoints                                              |
 | `main.py`         | Assembles the app and calls `add_pagination`                        |
@@ -21,18 +21,18 @@ the enum used for `User.status` lives in [`examples/enums.py`](../../examples/en
 ## Injecting the repository
 
 The repository takes a session in its constructor, so a dependency function can build a
-fresh one per request. Return it typed as the *abstract* interface, so your routes
+fresh one per request. Return it typed as the *interface*, so your routes
 depend on that interface rather than on the concrete SQLAlchemy implementation:
 
 ```python
 # dependencies.py
 def get_user_repository(
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> AbstractUserRepository:
+) -> UserRepositoryInterface:
     return UserRepository(session)
 
 
-UserRepo = Annotated[AbstractUserRepository, Depends(get_user_repository)]
+UserRepo = Annotated[UserRepositoryInterface, Depends(get_user_repository)]
 ```
 
 A handler then only needs the `UserRepo` alias:

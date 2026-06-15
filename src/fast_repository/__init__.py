@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .abstract import CRUDRepositoryInterface, SyncCRUDRepositoryInterface
 from .crud import CRUDRepository
 from .filters import InvalidFilterError
+from .interface import CRUDRepositoryInterface, SyncCRUDRepositoryInterface
 from .locking import DbLockInfo
 from .sync import SyncCRUDRepository
 

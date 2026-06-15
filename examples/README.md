@@ -34,7 +34,7 @@ uv run uvicorn fastapi_app.main:app --app-dir examples --reload
 | File | Responsibility |
 | --- | --- |
 | `database.py` | engine, session, `lifespan`, `get_session` |
-| `dependencies.py` | build the repository, expose it as the abstract type |
+| `dependencies.py` | build the repository, expose it as the interface type |
 | `dtos.py` | Pydantic models and list-query parameters |
 | `routers.py` | the `/users` endpoints (full CRUD + filter/sort/count) |
 | `main.py` | assemble the app and call `add_pagination` |

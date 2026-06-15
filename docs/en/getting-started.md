@@ -45,7 +45,7 @@ from abc import ABC
 from fast_repository import CRUDRepositoryInterface
 
 
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     ...
 ```
 
@@ -58,7 +58,7 @@ there is no body to write:
 from fast_repository import CRUDRepository
 
 
-class UserRepository(CRUDRepository[User], AbstractUserRepository):
+class UserRepository(CRUDRepository[User], UserRepositoryInterface):
     ...
 ```
 
@@ -91,11 +91,11 @@ Prefer a synchronous `Session`? Use `SyncCRUDRepository` and
 from fast_repository import SyncCRUDRepositoryInterface, SyncCRUDRepository
 
 
-class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(SyncCRUDRepositoryInterface[User], ABC):
     ...
 
 
-class UserRepository(SyncCRUDRepository[User], AbstractUserRepository):
+class UserRepository(SyncCRUDRepository[User], UserRepositoryInterface):
     ...
 
 

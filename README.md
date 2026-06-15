@@ -13,7 +13,7 @@ Declare the repository interface, get the implementation for free.
 
 ## Why
 
-A repository keeps your domain layer depending on abstractions, but writing
+A repository keeps your domain layer depending on interfaces, but writing
 the same CRUD implementation for every entity is boilerplate.
 
 **Before** — hand-written, and repeated for every entity:
@@ -95,10 +95,10 @@ from abc import ABC
 from fast_repository import CRUDRepositoryInterface, CRUDRepository
 
 # Domain layer: depend on this interface.
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC): ...
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC): ...
 
 # Infrastructure layer: zero boilerplate, all CRUD methods provided.
-class UserRepository(CRUDRepository[User], AbstractUserRepository): ...
+class UserRepository(CRUDRepository[User], UserRepositoryInterface): ...
 ```
 
 The entity class is captured from the generic argument (`CRUDRepository[User]`)
@@ -181,7 +181,7 @@ re-declare the method on your interface like this:
 from sqlalchemy.sql import ColumnElement
 
 
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     @abstractmethod
     async def find_all(
         self,
@@ -191,11 +191,11 @@ class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
     ) -> list[User]: ...
 ```
 
-Wherever a value is typed as `AbstractUserRepository`, the editor now suggests `status=`.
+Wherever a value is typed as `UserRepositoryInterface`, the editor now suggests `status=`.
 Expose more filters by adding more keywords:
 
 ```python
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     @abstractmethod
     async def find_all(
         self,

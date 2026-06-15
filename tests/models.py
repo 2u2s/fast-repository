@@ -41,11 +41,11 @@ class Membership(Base):
     role: Mapped[str]
 
 
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     """Domain-facing interface for user repositories."""
 
 
-class UserRepository(CRUDRepository[User], AbstractUserRepository):
+class UserRepository(CRUDRepository[User], UserRepositoryInterface):
     """User repository whose CRUD methods come from the library."""
 
 
@@ -53,11 +53,11 @@ class MembershipRepository(CRUDRepository[Membership]):
     """Repository for the composite-key entity."""
 
 
-class AbstractSyncUserRepository(SyncCRUDRepositoryInterface[User], ABC):
+class SyncUserRepositoryInterface(SyncCRUDRepositoryInterface[User], ABC):
     """Domain-facing interface for synchronous user repositories."""
 
 
-class SyncUserRepository(SyncCRUDRepository[User], AbstractSyncUserRepository):
+class SyncUserRepository(SyncCRUDRepository[User], SyncUserRepositoryInterface):
     """Synchronous user repository whose CRUD methods come from the library."""
 
 

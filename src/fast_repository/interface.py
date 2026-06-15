@@ -1,4 +1,4 @@
-"""Abstract repository interfaces."""
+"""Repository interfaces."""
 
 from __future__ import annotations
 
@@ -28,12 +28,12 @@ class CRUDRepositoryInterface(ABC, Generic[EntityT]):
     Example:
         Declare the interface in the domain layer::
 
-            class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+            class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
                 ...
 
         Implement it in the infrastructure layer with zero boilerplate::
 
-            class UserRepository(CRUDRepository[User], AbstractUserRepository):
+            class UserRepository(CRUDRepository[User], UserRepositoryInterface):
                 ...
 
     """
@@ -276,12 +276,12 @@ class SyncCRUDRepositoryInterface(ABC, Generic[EntityT]):
     Example:
         Declare the interface in the domain layer::
 
-            class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
+            class UserRepositoryInterface(SyncCRUDRepositoryInterface[User], ABC):
                 ...
 
         Implement it in the infrastructure layer with zero boilerplate::
 
-            class UserRepository(SyncCRUDRepository[User], AbstractUserRepository):
+            class UserRepository(SyncCRUDRepository[User], UserRepositoryInterface):
                 ...
 
     """

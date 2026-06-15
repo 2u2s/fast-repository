@@ -36,11 +36,11 @@ class User(Base):
     age: Mapped[int]
 
 
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     """Domain-facing interface — depend on this from your business logic."""
 
 
-class UserRepository(CRUDRepository[User], AbstractUserRepository):
+class UserRepository(CRUDRepository[User], UserRepositoryInterface):
     """Concrete repository — all CRUD methods come from the library."""
 
 

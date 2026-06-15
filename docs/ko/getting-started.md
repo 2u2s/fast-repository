@@ -47,7 +47,7 @@ from abc import ABC
 from fast_repository import CRUDRepositoryInterface
 
 
-class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC):
     ...
 ```
 
@@ -60,7 +60,7 @@ class AbstractUserRepository(CRUDRepositoryInterface[User], ABC):
 from fast_repository import CRUDRepository
 
 
-class UserRepository(CRUDRepository[User], AbstractUserRepository):
+class UserRepository(CRUDRepository[User], UserRepositoryInterface):
     ...
 ```
 
@@ -91,11 +91,11 @@ await repo.delete(user)
 from fast_repository import SyncCRUDRepositoryInterface, SyncCRUDRepository
 
 
-class AbstractUserRepository(SyncCRUDRepositoryInterface[User], ABC):
+class UserRepositoryInterface(SyncCRUDRepositoryInterface[User], ABC):
     ...
 
 
-class UserRepository(SyncCRUDRepository[User], AbstractUserRepository):
+class UserRepository(SyncCRUDRepository[User], UserRepositoryInterface):
     ...
 
 

@@ -9,7 +9,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import DeclarativeBase
 
 from ._base import _UNSET, _BaseCRUDRepository
-from .abstract import SyncCRUDRepositoryInterface
+from .interface import SyncCRUDRepositoryInterface
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

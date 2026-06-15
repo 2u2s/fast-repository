@@ -19,17 +19,17 @@ SQLAlchemy 모델과 레포지토리는 공유 파일 [`examples/models.py`](../
 
 ## 레포지토리 주입
 
-FastAPI 의존성으로 레포지토리를 선언할 때, 반환 타입을 구현체가 아니라 *추상(abstract)* 인터페이스로 선언하세요.
+FastAPI 의존성으로 레포지토리를 선언할 때, 반환 타입을 구현체가 아니라 *인터페이스* 타입으로 선언하세요.
 
 ```python
 # dependencies.py
 def get_user_repository(
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> AbstractUserRepository:
+) -> UserRepositoryInterface:
     return UserRepository(session)
 
 
-UserRepo = Annotated[AbstractUserRepository, Depends(get_user_repository)]
+UserRepo = Annotated[UserRepositoryInterface, Depends(get_user_repository)]
 ```
 
 핸들러는 `UserRepo` 별칭만 있으면 됩니다:
