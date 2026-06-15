@@ -117,4 +117,6 @@ customization all work the same as the async repository.
   apply a default filter to every read.
 - [Transactions](transactions.md) — control commit with the `autocommit` flag.
 - [Soft delete](soft-delete.md) — mark rows deleted instead of removing them.
+- [FastAPI integration](fastapi.md) — wire the repository into routes with
+  dependency injection.
 - [Runnable examples](../../examples/README.md) — scripts and a small FastAPI app.

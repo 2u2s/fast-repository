@@ -116,4 +116,5 @@ repo.delete(user)
 - [쿼리 커스터마이징](customizing-queries.md) — 관계를 즉시 로드(eager-load)하거나 모든 읽기에 기본 필터를 적용합니다.
 - [트랜잭션](transactions.md) — `autocommit` 플래그로 커밋을 제어합니다.
 - [소프트 삭제](soft-delete.md) — 행을 제거하는 대신 삭제로 표시합니다.
+- [FastAPI 통합](fastapi.md) — 의존성 주입으로 레포지토리를 라우트에 연결합니다.
 - [실행 가능한 예제](../../examples/README.md) — 스크립트와 간단한 FastAPI 앱을 제공합니다.

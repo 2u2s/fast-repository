@@ -10,6 +10,7 @@ from abc import ABC
 from collections.abc import AsyncIterator
 from datetime import datetime
 
+from enums import UserStatus
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -31,7 +32,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    status: Mapped[str]
+    status: Mapped[UserStatus]
     age: Mapped[int]
 
 
@@ -77,9 +78,9 @@ async def seed(repo: UserRepository) -> None:
     """Insert a handful of users so reads have something to return."""
     await repo.save_all(
         [
-            User(name="Ada", status="active", age=36),
-            User(name="Linus", status="active", age=54),
-            User(name="Grace", status="inactive", age=85),
-            User(name="Kent", status="active", age=64),
+            User(name="Ada", status=UserStatus.ACTIVE, age=36),
+            User(name="Linus", status=UserStatus.ACTIVE, age=54),
+            User(name="Grace", status=UserStatus.INACTIVE, age=85),
+            User(name="Kent", status=UserStatus.ACTIVE, age=64),
         ]
     )

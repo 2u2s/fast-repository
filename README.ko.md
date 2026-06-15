@@ -228,6 +228,7 @@ add_pagination(app)
 - [쿼리 커스터마이징](https://github.com/2u2s/fast-repository/blob/main/docs/ko/customizing-queries.md) — 관계를 즉시 로드(eager-load)하거나 모든 조회에 기본 필터를 적용하는 방법.
 - [트랜잭션](https://github.com/2u2s/fast-repository/blob/main/docs/ko/transactions.md) — `autocommit` 플래그로 커밋을 제어하고 작업을 단위 작업(unit of work)으로 묶는 방법.
 - [소프트 삭제](https://github.com/2u2s/fast-repository/blob/main/docs/ko/soft-delete.md) — 행을 실제로 삭제하는 대신 삭제 표시를 남기는 방법.
+- [FastAPI 연동](https://github.com/2u2s/fast-repository/blob/main/docs/ko/fastapi.md) — 의존성 주입으로 레포지토리를 라우트에 연결하는 방법.
 
 기본 CRUD, 필터링, `autocommit` 플래그, 간단한 FastAPI 앱을 다루는 실행 가능한 [예제](https://github.com/2u2s/fast-repository/blob/main/examples/README.md)도 제공합니다.
 

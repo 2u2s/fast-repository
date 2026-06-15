@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
+from enums import UserStatus
 from models import User, UserRepository, make_session
 
 
@@ -18,7 +19,7 @@ async def main() -> None:
         repo = UserRepository(session)
 
         # Create — save() persists and commits.
-        user = await repo.save(User(name="Ada", status="active", age=36))
+        user = await repo.save(User(name="Ada", status=UserStatus.ACTIVE, age=36))
         print(f"created: id={user.id} name={user.name}")
 
         # Read — find() looks the entity up by its primary key.

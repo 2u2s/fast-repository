@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
+from enums import UserStatus
 from models import User, UserRepository, make_session
 
 
@@ -23,7 +24,7 @@ async def main() -> None:
         repo = UserRepository(session)
 
         # autocommit=False flushes: the primary key is assigned...
-        new_user = User(name="Ada", status="active", age=36)
+        new_user = User(name="Ada", status=UserStatus.ACTIVE, age=36)
         user = await repo.save(new_user, autocommit=False)
         print(f"flushed: id={user.id} is populated before commit")
 
@@ -32,7 +33,9 @@ async def main() -> None:
         print(f"after rollback: find() returns {await repo.find(user.id)}")
 
         # The default, autocommit=True, commits immediately and survives a rollback.
-        committed = await repo.save(User(name="Linus", status="active", age=54))
+        committed = await repo.save(
+            User(name="Linus", status=UserStatus.ACTIVE, age=54)
+        )
         await session.rollback()
         print(f"after commit: find() returns {(await repo.find(committed.id)).name}")
 

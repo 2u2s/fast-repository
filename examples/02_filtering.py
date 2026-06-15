@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
+from enums import UserStatus
 from fastapi_pagination import Params
 from models import User, UserRepository, make_session, seed
 from sqlalchemy import func, or_
@@ -23,7 +24,7 @@ async def main() -> None:
         await seed(repo)
 
         # A bare keyword is an equality filter.
-        active = await repo.find_all(status="active")
+        active = await repo.find_all(status=UserStatus.ACTIVE)
         print(f"active users: {[u.name for u in active]}")
 
         # An __operator suffix applies that operator.
@@ -37,7 +38,7 @@ async def main() -> None:
         print(f"name like A%: {[u.name for u in like]}")
 
         # __ne and __notin negate a match.
-        not_active = await repo.find_all(status__ne="active")
+        not_active = await repo.find_all(status__ne=UserStatus.ACTIVE)
         print(f"status != active: {[u.name for u in not_active]}")
 
         others = await repo.find_all(name__notin=["Ada", "Grace"])
@@ -52,7 +53,7 @@ async def main() -> None:
         print(f"name length <= 4: {[u.name for u in short_names]}")
 
         # Expressions and keyword filters can be mixed.
-        active_seniors = await repo.find_all(User.age >= 60, status="active")
+        active_seniors = await repo.find_all(User.age >= 60, status=UserStatus.ACTIVE)
         print(f"active and >=60: {[u.name for u in active_seniors]}")
 
         # order_by takes raw SQLAlchemy order expressions (single or list).
@@ -61,11 +62,13 @@ async def main() -> None:
 
         # Pagination returns a Page ordered by primary key; order_by is also accepted
         # and the primary key is appended automatically as a tie-breaker.
-        page = await repo.find_all_paginated(Params(page=1, size=2), status="active")
+        page = await repo.find_all_paginated(
+            Params(page=1, size=2), status=UserStatus.ACTIVE
+        )
         print(f"page 1/size 2: {[u.name for u in page.items]} of {page.total} total")
 
         # count() and exists() take the same filters as find_all.
-        active_count = await repo.count(status="active")
+        active_count = await repo.count(status=UserStatus.ACTIVE)
         print(f"active count: {active_count}")
 
         has_ada = await repo.exists(name="Ada")

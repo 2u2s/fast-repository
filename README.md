@@ -236,6 +236,7 @@ add_pagination(app)
 - [Customizing queries](https://github.com/2u2s/fast-repository/blob/main/docs/en/customizing-queries.md) — eager-load relationships or apply a default filter to every read.
 - [Transactions](https://github.com/2u2s/fast-repository/blob/main/docs/en/transactions.md) — control commit with the `autocommit` flag and group work into a unit of work.
 - [Soft delete](https://github.com/2u2s/fast-repository/blob/main/docs/en/soft-delete.md) — opt in to marking rows deleted instead of removing them.
+- [FastAPI integration](https://github.com/2u2s/fast-repository/blob/main/docs/en/fastapi.md) — wire the repository into routes with dependency injection.
 
 Runnable [examples](https://github.com/2u2s/fast-repository/blob/main/examples/README.md) cover basic CRUD, filtering, the
 `autocommit` flag, and a small FastAPI app.
