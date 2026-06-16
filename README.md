@@ -13,8 +13,26 @@ Declare the repository interface, get the implementation for free.
 
 ## Why
 
-A repository keeps your domain layer depending on interfaces, but writing
-the same CRUD implementation for every entity is boilerplate.
+FastAPI has no built-in repository concept. Its tutorials reach the database directly
+inside path operation functions, or through a loose `crud.py` module of free functions.
+That is fine for a demo, but as an app grows it scatters query logic across routes and
+couples your business logic to SQLAlchemy.
+
+The repository pattern puts one object in charge of persistence for an entity, and that
+buys you:
+
+- **A domain layer that depends on an interface, not on SQLAlchemy.** Business
+  logic talks to `UserRepositoryInterface` — it never imports a session or writes
+  a `select()`.
+- **Tests without a database.** Swap the real repository for an in-memory fake at
+  the interface boundary to unit-test business rules.
+- **Query logic in one place.** Filtering, eager-loading, and soft-delete rules
+  stop being copy-pasted across endpoints.
+- **Swappable implementations.** Change the ORM, add caching, or split reads and
+  writes without touching callers.
+
+The catch: writing that repository for every entity — the various read, save, and
+delete methods, and pagination on top — is the same boilerplate each time.
 
 **Before** — hand-written, and repeated for every entity:
 
@@ -168,8 +186,7 @@ class UserRepository(
     ...
 ```
 
-When omitted, reads default to `select(User)`. For runtime customization you
-can also assign `self.stmt` on an instance.
+When omitted, reads default to `select(User)`.
 
 ### Typed filters for IDE autocomplete
 
