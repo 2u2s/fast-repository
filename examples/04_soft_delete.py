@@ -19,7 +19,7 @@ async def main() -> None:
     """Soft-delete an article, then show how reads treat it."""
     async for session in make_session():
         repo = ArticleRepository(session)
-        article = await repo.save(Article(title="Hello"))
+        article = await repo.save(Article(title="Hello", author_id=1))
         article_id = article.id
 
         # delete() marks the row instead of removing it.

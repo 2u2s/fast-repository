@@ -44,6 +44,61 @@ class ActiveUserRepository(
 
 이 레포지토리에서 `find_all()`을 호출하면 활성 사용자만 반환되며, 키워드 필터는 기본 조건 위에 추가됩니다.
 
+## 커스텀 쿼리 메서드 추가
+
+`CRUDRepositoryInterface`는 일반적인 CRUD만 선언합니다. 만약 다른 쿼리가 필요하다면 직접 구현하는 것도 가능합니다.
+
+```python
+from abc import ABC, abstractmethod
+from datetime import datetime
+
+from sqlalchemy import func, select
+from typing_extensions import TypedDict
+
+from fast_repository import CRUDRepository, CRUDRepositoryInterface
+
+
+class ArticleStats(TypedDict):
+    author_id: int
+    article_count: int
+    first_created_at: datetime
+    last_created_at: datetime
+
+
+class ArticleRepositoryInterface(CRUDRepositoryInterface[Article], ABC):
+    @abstractmethod
+    async def find_stats_by_user(self) -> list[ArticleStats]:
+        """작성자별 article 수와 최초/마지막 생성 시점."""
+
+
+class ArticleRepository(CRUDRepository[Article], ArticleRepositoryInterface):
+    async def find_stats_by_user(self) -> list[ArticleStats]:
+        result = await self.session.execute(
+            select(
+                Article.author_id,
+                func.count(Article.id),
+                func.min(Article.created_at),
+                func.max(Article.created_at),
+            )
+            .group_by(Article.author_id)
+            .order_by(Article.author_id)
+        )
+        return [
+            ArticleStats(
+                author_id=author_id,
+                article_count=count,
+                first_created_at=first,
+                last_created_at=last,
+            )
+            for author_id, count, first, last in result.all()
+        ]
+```
+
+`self.session`을 통해 SQLAlchemy 구문을 직접 생성할 수 있습니다. 호출자는 `ArticleRepositoryInterface`를
+사용하기에 다른 메서드와 똑같이 세션을 직접 다루지 않습니다.
+
+[`examples/05_custom_queries.py`](../../examples/05_custom_queries.py)를 참고하세요.
+
 ## 필터가 결합되는 방식
 
 [필터링](filtering.md)에서 사용하는 키워드 필터는 커스텀 `stmt`에 추가되는 요소입니다.
