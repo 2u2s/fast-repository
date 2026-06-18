@@ -14,11 +14,10 @@ FastAPI + SQLAlchemy를 위한 interface-first 레포지토리 패턴.
 ## 필요성
 
 FastAPI에는 기본적으로 레포지토리라는 개념이 없습니다. 공식 튜토리얼은 경로 함수(path operation)가 DB를
-직접 접근하거나, 자유 함수들을 모아 둔 느슨한 `crud.py` 모듈을 사용합니다. 데모에는 충분하지만, 앱이 커지
-쿼리 로직이 라우트 곳곳에 흩어지고 비즈니스 로직이 SQLAlchemy에 강하게 결합됩니다.
+직접 접근하거나, 자유 함수들을 모아 둔 느슨한 `crud.py` 모듈을 사용합니다. 데모에는 충분하겠지만 앱이 커지며
+쿼리 로직이 라우트 곳곳에 흩어지고 비즈니스 로직이 SQLAlchemy에 강하게 결합하는 문제가 발생할 수 있습니다.
 
-레포지토리 패턴은 한 엔티티의 영속성(persistence)을 책임지는 객체 하나를 두는 방식으로,
-다음과 같은 이점이 있습니다:
+레포지토리 패턴은 한 엔티티의 영속성(persistence)을 책임지는 객체 하나를 두는 방식으로, 다음과 같은 이점이 있습니다:
 
 - **도메인 계층이 구현체가 아니라 인터페이스에 의존합니다.** 비즈니스 로직은
   `UserRepositoryInterface`와만 대화하며, 세션을 임포트하거나 `select()`를 작성하지
@@ -118,7 +117,7 @@ class UserRepositoryInterface(CRUDRepositoryInterface[User], ABC): ...
 class UserRepository(CRUDRepository[User], UserRepositoryInterface): ...
 ```
 
-엔티티 클래스는 클래스 정의 시점에 제네릭 인수(`CRUDRepository[User]`)로부터 캡처되므로, 생성자 연결도, 메타클래스 관련 학습 부담도 없습니다.
+DB 엔티티 클래스를 제네릭 인수(`CRUDRepository[User]`)로 넣기만 하면 됩니다.
 
 동기 `Session`을 사용하는 경우, `SyncCRUDRepository`와 `SyncCRUDRepositoryInterface`가 `async`/`await` 없이 동일한 API를 제공합니다.
 
