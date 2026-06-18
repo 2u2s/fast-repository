@@ -8,8 +8,8 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import DeclarativeBase
 
-from ._base import _UNSET, _BaseCRUDRepository
-from .interface import SyncCRUDRepositoryInterface
+from ..interface import SyncCRUDRepositoryInterface
+from .base import _UNSET, _BaseCRUDRepository
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
     from sqlalchemy.sql import ColumnElement
 
-    from .locking import DbLockInfo
+    from ..types import DbLockInfo
 
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import InstrumentedAttribute
     from sqlalchemy.sql import ColumnElement
 
-    from .locking import DbLockInfo
+    from ..types import DbLockInfo
 
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 

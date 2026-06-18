@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import inspect
 
+from ..enums import FilterOperator
+from ..errors import InvalidFilterError
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -13,21 +16,17 @@ if TYPE_CHECKING:
     from sqlalchemy.sql import ColumnElement
 
 
-class InvalidFilterError(ValueError):
-    """Raised when a keyword filter matches no column or operator."""
-
-
-_OPERATORS: dict[str, Callable[[Any, Any], Any]] = {
-    "in": lambda column, value: column.in_(value),
-    "notin": lambda column, value: column.not_in(value),
-    "ne": lambda column, value: column != value,
-    "gt": lambda column, value: column > value,
-    "ge": lambda column, value: column >= value,
-    "lt": lambda column, value: column < value,
-    "le": lambda column, value: column <= value,
-    "like": lambda column, value: column.like(value),
-    "ilike": lambda column, value: column.ilike(value),
-    "is": lambda column, value: column.is_(value),
+_OPERATORS: dict[FilterOperator, Callable[[Any, Any], Any]] = {
+    FilterOperator.IN: lambda column, value: column.in_(value),
+    FilterOperator.NOTIN: lambda column, value: column.not_in(value),
+    FilterOperator.NE: lambda column, value: column != value,
+    FilterOperator.GT: lambda column, value: column > value,
+    FilterOperator.GE: lambda column, value: column >= value,
+    FilterOperator.LT: lambda column, value: column < value,
+    FilterOperator.LE: lambda column, value: column <= value,
+    FilterOperator.LIKE: lambda column, value: column.like(value),
+    FilterOperator.ILIKE: lambda column, value: column.ilike(value),
+    FilterOperator.IS: lambda column, value: column.is_(value),
 }
 
 
@@ -63,9 +62,10 @@ def build_conditions(
             conditions.append(column_attrs[key].class_attribute == value)
             continue
         name, separator, operator = key.rpartition("__")
-        if separator and name in column_attrs and operator in _OPERATORS:
+        apply = _OPERATORS.get(operator)
+        if separator and name in column_attrs and apply is not None:
             column = column_attrs[name].class_attribute
-            conditions.append(_OPERATORS[operator](column, value))
+            conditions.append(apply(column, value))
             continue
         raise InvalidFilterError(
             f"{key!r} does not match any column of {entity_cls.__name__} "

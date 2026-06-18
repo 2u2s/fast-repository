@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.1] - 2026-06-18
+
+### Changed
+
+- Reorganized the internal module layout into packages grouped by kind (`types`, 
+  `errors`, `enums`, `interface`, `impl`). The public API is unchanged:
+  `from fast_repository import ...` keeps working exactly as before. Code importing
+  private internal modules directly (e.g. `fast_repository._base`) must update its 
+  import paths.
+
 ## [0.2.0] - 2026-06-15
 
 ### Changed
@@ -32,4 +42,5 @@ All notable changes to this project are documented in this file.
   opt-in soft delete.
 - FastAPI pagination integration via `fastapi-pagination`.
 
+[0.2.1]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.1
 [0.2.0]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.0

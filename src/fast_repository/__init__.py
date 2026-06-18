@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from .crud import CRUDRepository
-from .filters import InvalidFilterError
+from .errors import InvalidFilterError
+from .impl import CRUDRepository, SyncCRUDRepository
 from .interface import CRUDRepositoryInterface, SyncCRUDRepositoryInterface
-from .locking import DbLockInfo
-from .sync import SyncCRUDRepository
+from .types import DbLockInfo
 
 __all__ = [
     "CRUDRepository",
