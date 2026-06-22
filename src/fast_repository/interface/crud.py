@@ -14,9 +14,11 @@ if TYPE_CHECKING:
 
     from fastapi_pagination import Page
     from fastapi_pagination.bases import AbstractParams
+    from sqlalchemy.orm import InstrumentedAttribute
     from sqlalchemy.sql import ColumnElement
 
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
+ValueT = TypeVar("ValueT")
 
 
 class CRUDRepositoryInterface(ABC, Generic[EntityT]):
@@ -67,6 +69,38 @@ class CRUDRepositoryInterface(ABC, Generic[EntityT]):
 
         Returns:
             EntityT | None: The entity, or None if it does not exist.
+
+        """
+
+    @abstractmethod
+    async def find_one(
+        self,
+        *criteria: ColumnElement[bool],
+        with_for_update: bool | DbLockInfo = False,
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> EntityT | None:
+        """Find the single entity matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all`` — use it to look an entity up by a unique column other than
+        the primary key (e.g. ``find_one(email="a@b.com")``). Pass
+        ``with_for_update`` to acquire a row lock.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_for_update (bool | DbLockInfo): Row-locking options, as in
+                ``find``.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            EntityT | None: The matching entity, or None if none matches.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+            MultipleResultsFound: If more than one entity matches.
 
         """
 
@@ -132,59 +166,6 @@ class CRUDRepositoryInterface(ABC, Generic[EntityT]):
 
         Returns:
             Page[EntityT]: The paginated entities.
-
-        Raises:
-            InvalidFilterError: If a keyword matches no mapped column.
-
-        """
-
-    @abstractmethod
-    async def count(
-        self,
-        *criteria: ColumnElement[bool],
-        with_deleted: bool = False,
-        **filters: Any,
-    ) -> int:
-        """Count entities matching the given criteria and filters.
-
-        Accepts the same positional ``criteria`` and keyword ``filters`` as
-        ``find_all``. The base statement's own conditions and the soft-delete
-        filter are respected.
-
-        Args:
-            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
-            with_deleted (bool): When the repository has soft-delete enabled,
-                include soft-deleted rows. Ignored otherwise.
-            **filters (Any): Keyword filters applied as where-conditions.
-
-        Returns:
-            int: The number of matching entities.
-
-        Raises:
-            InvalidFilterError: If a keyword matches no mapped column.
-
-        """
-
-    @abstractmethod
-    async def exists(
-        self,
-        *criteria: ColumnElement[bool],
-        with_deleted: bool = False,
-        **filters: Any,
-    ) -> bool:
-        """Return whether any entity matches the given criteria and filters.
-
-        Accepts the same positional ``criteria`` and keyword ``filters`` as
-        ``find_all``.
-
-        Args:
-            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
-            with_deleted (bool): When the repository has soft-delete enabled,
-                include soft-deleted rows. Ignored otherwise.
-            **filters (Any): Keyword filters applied as where-conditions.
-
-        Returns:
-            bool: True if at least one entity matches.
 
         Raises:
             InvalidFilterError: If a keyword matches no mapped column.
@@ -262,5 +243,179 @@ class CRUDRepositoryInterface(ABC, Generic[EntityT]):
             autocommit (bool): When True, commit the transaction. When False,
                 only flush, leaving the transaction open for the caller to
                 commit.
+
+        """
+
+    @abstractmethod
+    async def count(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> int:
+        """Count entities matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            int: The number of matching entities.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def exists(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> bool:
+        """Return whether any entity matches the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``.
+
+        Args:
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            bool: True if at least one entity matches.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def sum(
+        self,
+        column: InstrumentedAttribute[ValueT],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> ValueT | None:
+        """Sum a column over entities matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            column (InstrumentedAttribute[ValueT]): The mapped column to sum,
+                e.g. ``User.age``.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            ValueT | None: The sum, or None when no rows match.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def avg(
+        self,
+        column: InstrumentedAttribute[Any],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> float | None:
+        """Average a column over entities matching the given criteria and filters.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            column (InstrumentedAttribute[Any]): The mapped column to average,
+                e.g. ``User.age``.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            float | None: The average, or None when no rows match. Some
+                backends return a ``Decimal``.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def min(
+        self,
+        column: InstrumentedAttribute[ValueT],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> ValueT | None:
+        """Return the smallest value of a column over the matching entities.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            column (InstrumentedAttribute[ValueT]): The mapped column to take the
+                minimum of, e.g. ``User.created_at``.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            ValueT | None: The minimum value, or None when no rows match.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    async def max(
+        self,
+        column: InstrumentedAttribute[ValueT],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> ValueT | None:
+        """Return the largest value of a column over the matching entities.
+
+        Accepts the same positional ``criteria`` and keyword ``filters`` as
+        ``find_all``. The base statement's own conditions and the soft-delete
+        filter are respected.
+
+        Args:
+            column (InstrumentedAttribute[ValueT]): The mapped column to take the
+                maximum of, e.g. ``User.score``.
+            *criteria (ColumnElement[bool]): SQLAlchemy where-expressions.
+            with_deleted (bool): When the repository has soft-delete enabled,
+                include soft-deleted rows. Ignored otherwise.
+            **filters (Any): Keyword filters applied as where-conditions.
+
+        Returns:
+            ValueT | None: The maximum value, or None when no rows match.
+
+        Raises:
+            InvalidFilterError: If a keyword matches no mapped column.
 
         """

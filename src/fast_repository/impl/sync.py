@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import func
 from sqlalchemy.orm import DeclarativeBase
 
 from ..interface import SyncCRUDRepositoryInterface
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from fastapi_pagination.bases import AbstractParams
-    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import InstrumentedAttribute, Session
     from sqlalchemy.sql import ColumnElement
 
     from ..types import DbLockInfo
@@ -78,6 +79,19 @@ class SyncCRUDRepository(
             self._find_statement(pk, keys, with_for_update, with_deleted)
         )
 
+    def find_one(
+        self,
+        *criteria: ColumnElement[bool],
+        with_for_update: bool | DbLockInfo = False,
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> EntityT | None:
+        """Find the single entity matching the given criteria and filters."""
+        result = self.session.scalars(
+            self._find_one_statement(criteria, filters, with_for_update, with_deleted)
+        )
+        return result.unique().one_or_none()
+
     def find_all(
         self,
         *criteria: ColumnElement[bool],
@@ -104,29 +118,6 @@ class SyncCRUDRepository(
             self.session,
             self._paginated_statement(criteria, filters, order_by, with_deleted),
             params,
-        )
-
-    def count(
-        self,
-        *criteria: ColumnElement[bool],
-        with_deleted: bool = False,
-        **filters: Any,
-    ) -> int:
-        """Count entities matching the given criteria and filters."""
-        total = self.session.scalar(
-            self._count_statement(criteria, filters, with_deleted)
-        )
-        return total or 0
-
-    def exists(
-        self,
-        *criteria: ColumnElement[bool],
-        with_deleted: bool = False,
-        **filters: Any,
-    ) -> bool:
-        """Return whether any entity matches the given criteria and filters."""
-        return bool(
-            self.session.scalar(self._exists_statement(criteria, filters, with_deleted))
         )
 
     def save(self, entity: EntityT, *, autocommit: bool = True) -> EntityT:
@@ -168,6 +159,77 @@ class SyncCRUDRepository(
             for entity in entities:
                 self.session.delete(entity)
         self._finish(autocommit)
+
+    def count(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> int:
+        """Count entities matching the given criteria and filters."""
+        total = self.session.scalar(
+            self._count_statement(criteria, filters, with_deleted)
+        )
+        return total or 0
+
+    def exists(
+        self,
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> bool:
+        """Return whether any entity matches the given criteria and filters."""
+        return bool(
+            self.session.scalar(self._exists_statement(criteria, filters, with_deleted))
+        )
+
+    def sum(
+        self,
+        column: InstrumentedAttribute[Any],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> Any:
+        """Sum a column over entities matching the given criteria and filters."""
+        return self.session.scalar(
+            self._aggregate_statement(func.sum, column, criteria, filters, with_deleted)
+        )
+
+    def avg(
+        self,
+        column: InstrumentedAttribute[Any],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> float | None:
+        """Average a column over entities matching the given criteria and filters."""
+        return self.session.scalar(
+            self._aggregate_statement(func.avg, column, criteria, filters, with_deleted)
+        )
+
+    def min(
+        self,
+        column: InstrumentedAttribute[Any],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> Any:
+        """Return the smallest value of a column over the matching entities."""
+        return self.session.scalar(
+            self._aggregate_statement(func.min, column, criteria, filters, with_deleted)
+        )
+
+    def max(
+        self,
+        column: InstrumentedAttribute[Any],
+        *criteria: ColumnElement[bool],
+        with_deleted: bool = False,
+        **filters: Any,
+    ) -> Any:
+        """Return the largest value of a column over the matching entities."""
+        return self.session.scalar(
+            self._aggregate_statement(func.max, column, criteria, filters, with_deleted)
+        )
 
     def _finish(self, autocommit: bool) -> None:
         """Commit the transaction, or flush when the caller manages it."""

@@ -1,4 +1,6 @@
-"""Filtering: keyword filters, operator suffixes, ordering, pagination, count, exists.
+"""Filtering: keyword filters, operators, ordering, pagination, count/exists.
+
+Also shows the sum/avg/min/max aggregates.
 
 Run it::
 
@@ -18,7 +20,7 @@ from fast_repository import InvalidFilterError
 
 
 async def main() -> None:
-    """Query seeded users with filter operators, ordering, count, and exists."""
+    """Query seeded users with filters, ordering, count/exists, and aggregates."""
     async for session in make_session():
         repo = UserRepository(session)
         await seed(repo)
@@ -73,6 +75,11 @@ async def main() -> None:
 
         has_ada = await repo.exists(name="Ada")
         print(f"Ada exists: {has_ada}")
+
+        # sum/avg/min/max aggregate a single column over the matching rows.
+        print(f"total active age: {await repo.sum(User.age, status=UserStatus.ACTIVE)}")
+        print(f"average age: {await repo.avg(User.age)}")
+        print(f"youngest/oldest: {await repo.min(User.age)}/{await repo.max(User.age)}")
 
         # A typo raises instead of silently returning unfiltered rows.
         try:

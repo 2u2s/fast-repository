@@ -213,6 +213,22 @@ class _BaseCRUDRepository(Generic[EntityT]):
             stmt = stmt.order_by(*order_exprs)
         return stmt
 
+    def _find_one_statement(
+        self,
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+        with_for_update: bool | DbLockInfo,
+        with_deleted: bool,
+    ) -> Select[tuple[Any]]:
+        """Build the select for a single filtered read, with optional row lock."""
+        stmt = self._find_all_statement(criteria, filters, None, with_deleted)
+        if with_for_update is not False:
+            options: dict[str, Any] = (
+                {} if with_for_update is True else dict(with_for_update)
+            )
+            stmt = stmt.with_for_update(**options)
+        return stmt
+
     def _paginated_statement(
         self,
         criteria: tuple[ColumnElement[bool], ...],
@@ -268,6 +284,26 @@ class _BaseCRUDRepository(Generic[EntityT]):
         """
         inner = self._find_all_statement(criteria, filters, None, with_deleted)
         return select(inner.order_by(None).exists())
+
+    def _aggregate_statement(
+        self,
+        aggregate: Any,
+        column: InstrumentedAttribute[Any],
+        criteria: tuple[ColumnElement[bool], ...],
+        filters: dict[str, Any],
+        with_deleted: bool,
+    ) -> Select[tuple[Any]]:
+        """Build a ``SELECT <aggregate>(column)`` over the filtered base statement.
+
+        ``aggregate`` is a SQLAlchemy function constructor such as ``func.sum``.
+        Mirrors ``_count_statement``: the base statement's ``where`` conditions
+        and the soft-delete filter are preserved, while ordering and ORM
+        eager-loader options are dropped by wrapping the read as a subquery.
+        """
+        inner = self._find_all_statement(criteria, filters, None, with_deleted)
+        subquery = inner.order_by(None).subquery()
+        target = subquery.corresponding_column(column.__clause_element__())
+        return select(aggregate(target))
 
     def _alive_conditions(self, with_deleted: bool) -> tuple[ColumnElement[bool], ...]:
         """The non-deleted filter as a tuple, empty when it does not apply."""

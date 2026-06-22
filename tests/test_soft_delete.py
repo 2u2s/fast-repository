@@ -189,6 +189,33 @@ async def test_exists_excludes_soft_deleted_unless_requested(
 
 
 @pytest.mark.asyncio
+async def test_find_one_excludes_soft_deleted_unless_requested(
+    session: AsyncSession,
+) -> None:
+    repo = ArticleRepository(session)
+    article = await repo.save(Article(title="only"))
+
+    await repo.delete(article)
+
+    assert await repo.find_one(title="only") is None
+    assert await repo.find_one(title="only", with_deleted=True) is article
+
+
+@pytest.mark.asyncio
+async def test_aggregates_exclude_soft_deleted_unless_requested(
+    session: AsyncSession,
+) -> None:
+    repo = ArticleRepository(session)
+    await repo.save_all([Article(title="a"), Article(title="b")])
+    gone = await repo.save(Article(title="c"))
+
+    await repo.delete(gone)
+
+    assert await repo.max(Article.id) == gone.id - 1
+    assert await repo.max(Article.id, with_deleted=True) == gone.id
+
+
+@pytest.mark.asyncio
 async def test_find_all_order_by_excludes_soft_deleted(session: AsyncSession) -> None:
     repo = ArticleRepository(session)
     first = await repo.save(Article(title="a"))

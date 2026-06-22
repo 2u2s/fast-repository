@@ -119,6 +119,23 @@ await repo.find(user_id=1, group_id=2)
 `find` returns the entity or `None`. Passing a composite key positionally, or
 keys that do not match the entity's primary-key columns, raises `ValueError`.
 
+## Finding one by other columns
+
+`find_one` looks up a single entity by any columns — use it for unique columns
+other than the primary key, such as an email or slug. It takes the same
+positional expressions and keyword filters as `find_all`, respects the
+soft-delete filter, and accepts `with_for_update`:
+
+```python
+await repo.find_one(email="a@b.com")          # the matching entity, or None
+await repo.find_one(User.slug == "intro")     # positional expression
+await repo.find_one(email="a@b.com", with_for_update=True)
+```
+
+It returns the entity or `None` when nothing matches, and raises
+`MultipleResultsFound` when more than one row matches — so a non-unique filter
+fails loudly instead of silently returning an arbitrary row.
+
 ## Locking rows for update
 
 Pass `with_for_update` to `find` to acquire a row lock (`SELECT ... FOR UPDATE`),
@@ -171,4 +188,19 @@ filter; they also support `with_deleted=True`:
 ```python
 await repo.count(status="active")     # number of matching rows
 await repo.exists(email="a@b.com")    # True if any row matches
+```
+
+## Aggregates
+
+`sum`, `avg`, `min`, and `max` aggregate a single mapped column over the
+matching rows. Pass the column as its mapped attribute (e.g. `User.age`),
+followed by the same positional expressions and keyword filters as `find_all`;
+they respect the soft-delete filter and support `with_deleted=True`. Each
+returns `None` when no row matches:
+
+```python
+await repo.sum(User.age, status="active")   # total age of active users
+await repo.avg(User.age)                     # mean age, or None if empty
+await repo.min(User.created_at)              # earliest signup
+await repo.max(User.age, User.age < 65)      # oldest under 65
 ```

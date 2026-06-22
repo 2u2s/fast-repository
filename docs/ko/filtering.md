@@ -116,6 +116,19 @@ await repo.find(user_id=1, group_id=2)
 `find`는 엔티티 또는 `None`을 반환합니다. 복합 키를 위치 인자로 전달하거나,
 엔티티의 기본 키 컬럼과 일치하지 않는 키를 지정하면 `ValueError`가 발생합니다.
 
+## 다른 컬럼으로 한 건 조회
+
+`find_one`을 통해 임의의 컬럼으로 단일 엔티티를 조회할 수 있습니다. email, slug처럼 기본 키가 아닌 컬럼으로 조회할 때 사용하세요.
+`find_all`과 동일한 위치 인자 표현식 및 키워드 필터를 받고, 소프트 삭제 필터 및 `with_for_update`도 적용할 수 있습니다.
+
+```python
+await repo.find_one(email="a@b.com")          # 일치하는 엔티티, 없으면 None
+await repo.find_one(User.slug == "intro")     # 위치 인자 표현식
+await repo.find_one(email="a@b.com", with_for_update=True)
+```
+
+일치하는 행이 없으면 `None`을, 두 건 이상 일치하면 `MultipleResultsFound`를 일으킵니다.
+
 ## 락 (Lock) 적용
 
 `find`에 `with_for_update`를 전달하면 락 (`SELECT ... FOR UPDATE`)을 획득합니다.
@@ -162,4 +175,17 @@ page.total   # 조건에 일치하는 전체 행 수
 ```python
 await repo.count(status="active")     # 조건에 일치하는 행의 수
 await repo.exists(email="a@b.com")    # 일치하는 행이 있으면 True
+```
+
+## 집계 (sum / avg / min / max)
+
+`sum`, `avg`, `min`, `max`는 매칭된 행에 대해 단일 매핑 컬럼을 집계합니다. 컬럼은 매핑 속성(예: `User.age`)으로 전달하고,
+그 뒤에 `find_all`과 동일한 위치 인자 표현식 및 키워드 필터를 넘깁니다. 소프트 삭제 필터가 적용되며
+`with_deleted=True`도 지원합니다. 일치하는 행이 없으면 `None`을 반환합니다
+
+```python
+await repo.sum(User.age, status="active")   # 활성 사용자 나이 합계
+await repo.avg(User.age)                     # 평균 나이, 비어 있으면 None
+await repo.min(User.created_at)              # 가장 이른 가입 시각
+await repo.max(User.age, User.age < 65)      # 65세 미만 중 최고령
 ```

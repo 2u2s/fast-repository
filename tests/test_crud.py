@@ -8,6 +8,7 @@ import pytest
 from fastapi_pagination import Params
 from sqlalchemy import func, or_, select
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_repository import CRUDRepository, InvalidFilterError
@@ -107,6 +108,58 @@ async def test_find_rejects_missing_key(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError):
         await repo.find()
+
+
+@pytest.mark.asyncio
+async def test_find_one_returns_unique_match(
+    repo: UserRepository, users: list[User]
+) -> None:
+    found = await repo.find_one(name=users[0].name)
+
+    assert found is users[0]
+
+
+@pytest.mark.asyncio
+async def test_find_one_returns_none_when_no_match(
+    repo: UserRepository, users: list[User]
+) -> None:
+    assert await repo.find_one(name="nobody") is None
+
+
+@pytest.mark.asyncio
+async def test_find_one_accepts_positional_criterion(
+    repo: UserRepository, users: list[User]
+) -> None:
+    oldest = max(users, key=lambda u: u.age)
+
+    assert await repo.find_one(User.age == oldest.age) is oldest
+
+
+@pytest.mark.asyncio
+async def test_find_one_raises_when_multiple_match(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with pytest.raises(MultipleResultsFound):
+        await repo.find_one(status="active")
+
+
+@pytest.mark.asyncio
+async def test_find_one_rejects_unknown_filter(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with pytest.raises(InvalidFilterError):
+        await repo.find_one(stauts="active")
+
+
+@pytest.mark.asyncio
+async def test_find_one_with_for_update_locks_row(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with mock.patch.object(repo.session, "scalars", wraps=repo.session.scalars) as spy:
+        found = await repo.find_one(name=users[0].name, with_for_update=True)
+
+    assert found is users[0]
+    assert "FOR UPDATE" in _compiled_sql(spy)
 
 
 @pytest.mark.asyncio
@@ -634,3 +687,60 @@ async def test_count_and_exists_on_composite_key_entity(
     assert await repo.count(role="admin") == 1
     assert await repo.exists(user_id=1, group_id=2) is True
     assert await repo.exists(role="owner") is False
+
+
+@pytest.mark.asyncio
+async def test_aggregates_over_all_rows(
+    repo: UserRepository, users: list[User]
+) -> None:
+    ages = [u.age for u in users]
+
+    assert await repo.sum(User.age) == sum(ages)
+    assert await repo.avg(User.age) == sum(ages) / len(ages)
+    assert await repo.min(User.age) == min(ages)
+    assert await repo.max(User.age) == max(ages)
+
+
+@pytest.mark.asyncio
+async def test_aggregates_apply_filters(
+    repo: UserRepository, users: list[User]
+) -> None:
+    active = [u.age for u in users if u.status == "active"]
+
+    assert await repo.sum(User.age, status="active") == sum(active)
+    assert await repo.min(User.age, status="active") == min(active)
+    assert await repo.max(User.age, status="active") == max(active)
+
+
+@pytest.mark.asyncio
+async def test_aggregates_apply_positional_criterion(
+    repo: UserRepository, users: list[User]
+) -> None:
+    expected = [u.age for u in users if u.age > 25]
+
+    assert await repo.sum(User.age, User.age > 25) == sum(expected)
+
+
+@pytest.mark.asyncio
+async def test_aggregates_return_none_when_no_rows(
+    repo: UserRepository, users: list[User]
+) -> None:
+    assert await repo.sum(User.age, status="nonexistent") is None
+    assert await repo.avg(User.age, status="nonexistent") is None
+    assert await repo.min(User.age, status="nonexistent") is None
+    assert await repo.max(User.age, status="nonexistent") is None
+
+
+@pytest.mark.asyncio
+async def test_aggregates_respect_class_declared_stmt(
+    session: AsyncSession, users: list[User]
+) -> None:
+    active = [u.age for u in users if u.status == "active"]
+
+    class ActiveUserRepository(
+        CRUDRepository[User], stmt=select(User).where(User.status == "active")
+    ):
+        """Repository with a default filter applied to all reads."""
+
+    assert await ActiveUserRepository(session).sum(User.age) == sum(active)
+    assert await ActiveUserRepository(session).max(User.age) == max(active)

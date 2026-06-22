@@ -27,6 +27,11 @@ async def main() -> None:
         assert fetched is not None
         print(f"found:   {fetched.name}, age {fetched.age}")
 
+        # Read — find_one() looks a single entity up by any (unique) column.
+        by_name = await repo.find_one(name="Ada")
+        assert by_name is not None
+        print(f"found one: {by_name.name} via name")
+
         # Update — mutate the entity and save() again (same method as create).
         fetched.age = 37
         await repo.save(fetched)

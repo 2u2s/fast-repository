@@ -8,6 +8,7 @@ import pytest
 from fastapi_pagination import Params
 from sqlalchemy import or_, select
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session
 
 from fast_repository import InvalidFilterError, SyncCRUDRepository
@@ -249,3 +250,51 @@ def test_sync_exists_reflects_matches(
 ) -> None:
     assert sync_repo.exists(status="active") is True
     assert sync_repo.exists(status="nonexistent") is False
+
+
+def test_sync_aggregates_over_all_rows(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    ages = [u.age for u in sync_users]
+
+    assert sync_repo.sum(User.age) == sum(ages)
+    assert sync_repo.avg(User.age) == sum(ages) / len(ages)
+    assert sync_repo.min(User.age) == min(ages)
+    assert sync_repo.max(User.age) == max(ages)
+
+
+def test_sync_aggregates_apply_filters(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    active = [u.age for u in sync_users if u.status == "active"]
+
+    assert sync_repo.sum(User.age, status="active") == sum(active)
+    assert sync_repo.max(User.age, status="active") == max(active)
+
+
+def test_sync_aggregates_return_none_when_no_rows(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    assert sync_repo.sum(User.age, status="nonexistent") is None
+    assert sync_repo.avg(User.age, status="nonexistent") is None
+    assert sync_repo.min(User.age, status="nonexistent") is None
+    assert sync_repo.max(User.age, status="nonexistent") is None
+
+
+def test_sync_find_one_returns_unique_match(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    assert sync_repo.find_one(name=sync_users[0].name) is sync_users[0]
+
+
+def test_sync_find_one_returns_none_when_no_match(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    assert sync_repo.find_one(name="nobody") is None
+
+
+def test_sync_find_one_raises_when_multiple_match(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    with pytest.raises(MultipleResultsFound):
+        sync_repo.find_one(status="active")

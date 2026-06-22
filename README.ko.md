@@ -74,6 +74,15 @@ class UserRepository:
             stmt = stmt.where(User.status == status)
         return list((await self.session.scalars(stmt)).all())
 
+    async def save(self, user: User) -> User:
+        self.session.add(user)
+        await self.session.commit()
+        return user
+
+    async def delete(self, user: User) -> None:
+        await self.session.delete(user)
+        await self.session.commit()
+
     async def count(
         self,
         name: str | None = None,
@@ -88,15 +97,6 @@ class UserRepository:
         if status is not None:
             stmt = stmt.where(User.status == status)
         return await self.session.scalar(stmt) or 0
-
-    async def save(self, user: User) -> User:
-        self.session.add(user)
-        await self.session.commit()
-        return user
-
-    async def delete(self, user: User) -> None:
-        await self.session.delete(user)
-        await self.session.commit()
 
     # ...그리고 exists(), save_all(), delete_all(), find_all_paginated(),
     #    연산자 필터(__in / __ne / __like), 행 잠금, 소프트 삭제까지 —
@@ -137,6 +137,7 @@ repo = UserRepository(session)  # AsyncSession
 await repo.find(1)                                # SELECT ... WHERE id = 1
 await repo.find(1, with_for_update=True)          # ... FOR UPDATE (행 잠금)
 await repo.find(user_id=1, group_id=2)            # 이름으로 복합 키 조회
+await repo.find_one(email="a@b.com")              # 유니크 컬럼으로 한 건, 없으면 None
 await repo.find_all(status="active")              # ... WHERE status = 'active'
 await repo.find_all(id__in=[1, 2, 3])             # ... WHERE id IN (1, 2, 3)
 await repo.find_all(age__ge=18, name__like="K%") # 연산자 접미사 사용
@@ -145,13 +146,18 @@ await repo.find_all(status__ne="active")          # ... WHERE status != 'active'
 await repo.find_all(id__notin=[1, 2, 3])          # ... WHERE id NOT IN (1, 2, 3)
 await repo.find_all(order_by=User.age.desc())     # ... ORDER BY age DESC
 await repo.find_all_paginated(params=Params(page=1, size=50), status="active")  # FastAPI에선 params 생략 가능
-await repo.count(status="active")                 # SELECT count(*) ... WHERE status = 'active'
-await repo.exists(id=1)                           # SELECT EXISTS(...) -> bool
 
 await repo.save(user)
 await repo.save_all(users)
 await repo.delete(user)
 await repo.delete_all(users)
+
+await repo.count(status="active")                 # SELECT count(*) ... WHERE status = 'active'
+await repo.exists(id=1)                           # SELECT EXISTS(...) -> bool
+await repo.sum(User.age, status="active")         # SELECT sum(age) ... WHERE status = 'active'
+await repo.avg(User.age)                          # SELECT avg(age) -> float | None
+await repo.min(User.age)                          # SELECT min(age)
+await repo.max(User.age)                          # SELECT max(age)
 ```
 
 ### 필터 문법
