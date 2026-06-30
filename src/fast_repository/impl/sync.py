@@ -50,7 +50,13 @@ class SyncCRUDRepository(
         ):
             ...
 
-    or per instance by assigning ``self.stmt``.
+    or per instance by assigning ``self.stmt``. To override it only for a block
+    of code, use ``stmt_override``::
+        ```
+        with repo.stmt_override(lambda s: s.where(User.active)):
+            repo.find_all()  # uses the overridden statement
+        ```
+
     """
 
     def __init__(self, session: Session) -> None:

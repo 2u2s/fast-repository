@@ -534,6 +534,98 @@ async def test_subclass_inherits_class_declared_stmt(
 
 
 @pytest.mark.asyncio
+async def test_stmt_override_replaces_stmt_inside_block(
+    repo: UserRepository, users: list[User]
+) -> None:
+    active_users = [user for user in users if user.status == "active"]
+
+    with repo.stmt_override(select(User).where(User.status == "active")):
+        found = await repo.find_all()
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in active_users)
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_reverts_outside_block(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with repo.stmt_override(select(User).where(User.status == "active")):
+        await repo.find_all()
+
+    found = await repo.find_all()
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in users)
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_callable_augments_current_stmt(
+    repo: UserRepository, users: list[User]
+) -> None:
+    active_users = [user for user in users if user.status == "active"]
+
+    with repo.stmt_override(lambda s: s.where(User.status == "active")):
+        found = await repo.find_all()
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in active_users)
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_nested_inner_restores_to_outer(
+    repo: UserRepository, users: list[User]
+) -> None:
+    active_users = [user for user in users if user.status == "active"]
+    young_active = [u for u in active_users if u.age < 25]
+
+    with repo.stmt_override(select(User).where(User.status == "active")):
+        with repo.stmt_override(lambda s: s.where(User.age < 25)):
+            inner = await repo.find_all()
+        outer = await repo.find_all()
+
+    assert sorted(u.id for u in inner) == sorted(u.id for u in young_active)
+    assert sorted(u.id for u in outer) == sorted(u.id for u in active_users)
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_restores_on_exception(
+    repo: UserRepository, users: list[User]
+) -> None:
+    with (
+        pytest.raises(RuntimeError),
+        repo.stmt_override(select(User).where(User.status == "active")),
+    ):
+        raise RuntimeError("boom")
+
+    found = await repo.find_all()
+
+    assert sorted(u.id for u in found) == sorted(u.id for u in users)
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_isolated_across_concurrent_tasks(
+    session: AsyncSession,
+) -> None:
+    import asyncio
+
+    repo = UserRepository(session)
+    active_stmt = select(User).where(User.status == "active")
+    inactive_stmt = select(User).where(User.status == "inactive")
+
+    async def effective_stmt_within(stmt: object) -> str:
+        with repo.stmt_override(stmt):
+            await asyncio.sleep(0)  # force the two tasks to interleave
+            return str(repo._active_stmt)
+
+    active_seen, inactive_seen = await asyncio.gather(
+        effective_stmt_within(active_stmt),
+        effective_stmt_within(inactive_stmt),
+    )
+
+    assert active_seen == str(active_stmt)
+    assert inactive_seen == str(inactive_stmt)
+    assert str(repo._active_stmt) == str(repo.stmt)  # both blocks left cleanly
+
+
+@pytest.mark.asyncio
 async def test_init_subclass_inherits_entity_from_parent(
     session: AsyncSession,
 ) -> None:

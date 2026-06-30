@@ -8,6 +8,9 @@ statements.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import (
     TYPE_CHECKING,
@@ -25,6 +28,8 @@ from sqlalchemy.orm import DeclarativeBase
 from .filters import build_conditions
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from sqlalchemy import Select
     from sqlalchemy.orm import InstrumentedAttribute
     from sqlalchemy.sql import ColumnElement
@@ -34,6 +39,18 @@ if TYPE_CHECKING:
 EntityT = TypeVar("EntityT", bound=DeclarativeBase)
 
 _UNSET: Any = object()
+
+_stmt_override: ContextVar[dict[int, Select[tuple[Any]]] | None] = ContextVar(
+    "fast_repository_stmt_override", default=None
+)
+"""Per-instance, per-context base-statement overrides set by ``stmt_override``.
+
+Keyed by ``id(self)`` so concurrent coroutines/threads sharing one repository instance
+never see each other's override; the ContextVar itself provides the per-context 
+isolation. A module-level ContextVar (rather than one per instance) avoids the leak of
+never-collected ContextVars.
+
+"""
 
 
 class _BaseCRUDRepository(Generic[EntityT]):
@@ -93,6 +110,45 @@ class _BaseCRUDRepository(Generic[EntityT]):
             )
         if self._soft_delete_column is not None:
             self._alive_condition()  # validate the configured column eagerly
+
+    @property
+    def _active_stmt(self) -> Select[tuple[Any]]:
+        """The base statement currently in effect for read queries.
+
+        Returns the override set by an enclosing ``stmt_override`` block, if any,
+        otherwise the repository's configured ``stmt``.
+
+        """
+        overrides = _stmt_override.get()
+        if overrides is None:
+            return self.stmt
+        return overrides.get(id(self), self.stmt)
+
+    @contextmanager
+    def stmt_override(
+        self,
+        stmt: Select[tuple[Any]] | Callable[[Select[tuple[Any]]], Select[tuple[Any]]],
+    ) -> Iterator[None]:
+        """Override the base statement for read queries within the block.
+
+        Outside the block the repository reverts to its previous statement.
+        Pass a ``Select`` to replace the base statement outright, or a callable
+        that receives the current effective statement and returns a modified one
+        (e.g. ``lambda s: s.where(User.active)``).
+
+        The override is scoped to this instance and the current execution
+        context, so it is safe to share a repository across coroutines or
+        threads. Nested blocks compose: an inner callable receives the outer
+        block's statement, and leaving the inner block restores it.
+
+        """
+        resolved = stmt(self._active_stmt) if callable(stmt) else stmt
+        overrides = {**(_stmt_override.get() or {}), id(self): resolved}
+        token = _stmt_override.set(overrides)
+        try:
+            yield
+        finally:
+            _stmt_override.reset(token)
 
     @property
     def _pks(self) -> tuple[InstrumentedAttribute[Any], ...]:
@@ -184,7 +240,7 @@ class _BaseCRUDRepository(Generic[EntityT]):
         else:
             condition = pk_attrs[0] == pk
         conditions = [condition, *self._alive_conditions(with_deleted)]
-        stmt = self.stmt.where(*conditions)
+        stmt = self._active_stmt.where(*conditions)
         if with_for_update is not False:
             options: dict[str, Any] = (
                 {} if with_for_update is True else dict(with_for_update)
@@ -205,7 +261,7 @@ class _BaseCRUDRepository(Generic[EntityT]):
             *build_conditions(self._entity_cls, filters),
             *self._alive_conditions(with_deleted),
         )
-        stmt = self.stmt
+        stmt = self._active_stmt
         if conditions:
             stmt = stmt.where(*conditions)
         order_exprs = self._normalize_order_by(order_by)
@@ -249,7 +305,7 @@ class _BaseCRUDRepository(Generic[EntityT]):
         )
         order_exprs = self._normalize_order_by(order_by)
         # always order by at least the primary key for deterministic paging
-        stmt = self.stmt.order_by(*order_exprs, *self._pks)
+        stmt = self._active_stmt.order_by(*order_exprs, *self._pks)
         if conditions:
             stmt = stmt.where(*conditions)
         return stmt

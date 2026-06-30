@@ -298,3 +298,17 @@ def test_sync_find_one_raises_when_multiple_match(
 ) -> None:
     with pytest.raises(MultipleResultsFound):
         sync_repo.find_one(status="active")
+
+
+def test_sync_stmt_override_overrides_within_block_and_reverts(
+    sync_repo: SyncUserRepository, sync_users: list[User]
+) -> None:
+    active_users = [user for user in sync_users if user.status == "active"]
+
+    with sync_repo.stmt_override(lambda s: s.where(User.status == "active")):
+        scoped = sync_repo.find_all()
+
+    after = sync_repo.find_all()
+
+    assert sorted(u.id for u in scoped) == sorted(u.id for u in active_users)
+    assert sorted(u.id for u in after) == sorted(u.id for u in sync_users)

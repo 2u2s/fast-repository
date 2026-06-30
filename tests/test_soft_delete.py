@@ -227,3 +227,21 @@ async def test_find_all_order_by_excludes_soft_deleted(session: AsyncSession) ->
     found = await repo.find_all(order_by=Article.title.desc())
 
     assert [a.id for a in found] == [second.id, first.id]
+
+
+@pytest.mark.asyncio
+async def test_stmt_override_override_still_excludes_soft_deleted(
+    session: AsyncSession,
+) -> None:
+    from sqlalchemy import select
+
+    repo = ArticleRepository(session)
+    kept = await repo.save(Article(title="published"))
+    gone = await repo.save(Article(title="published"))
+
+    await repo.delete(gone)
+
+    with repo.stmt_override(select(Article).where(Article.title == "published")):
+        found = await repo.find_all()
+
+    assert [a.id for a in found] == [kept.id]  # soft-delete filter still applied

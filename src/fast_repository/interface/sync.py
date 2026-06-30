@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from sqlalchemy.orm import DeclarativeBase
@@ -11,9 +12,11 @@ from ..types import DbLockInfo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from contextlib import AbstractContextManager
 
     from fastapi_pagination import Page
     from fastapi_pagination.bases import AbstractParams
+    from sqlalchemy import Select
     from sqlalchemy.orm import InstrumentedAttribute
     from sqlalchemy.sql import ColumnElement
 
@@ -170,6 +173,32 @@ class SyncCRUDRepositoryInterface(ABC, Generic[EntityT]):
 
         Raises:
             InvalidFilterError: If a keyword matches no mapped column.
+
+        """
+
+    @abstractmethod
+    def stmt_override(
+        self,
+        stmt: Select[tuple[Any]] | Callable[[Select[tuple[Any]]], Select[tuple[Any]]],
+    ) -> AbstractContextManager[None]:
+        """Override the base statement for read queries within a ``with`` block.
+
+        Outside the block the repository reverts to its previous statement. Pass a
+        ``Select`` to replace the base statement outright, or a callable that receives
+        the current effective statement and returns a modified one (e.g.
+        ``lambda s: s.where(User.active)``).
+
+        The override is scoped to this instance and the current execution context, so
+        sharing a repository across coroutines or threads is safe; nested blocks
+        compose.
+
+        Args:
+            stmt (Select | Callable[[Select], Select]): A replacement statement,
+                or a callable that transforms the current effective statement.
+
+        Returns:
+            AbstractContextManager[None]: A context manager that activates the
+                override for the duration of the ``with`` block.
 
         """
 
