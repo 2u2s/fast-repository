@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.3] - 2026-06-30
+
+### Added
+
+- `stmt_override` on both repositories: a context manager that overrides the
+  base statement for read queries within a `with` block, reverting to the
+  configured statement on exit. Pass a `Select` to replace the statement
+  outright, or a callable that transforms the current statement (e.g.
+  `lambda s: s.where(User.active)`). Overrides are isolated per instance and per
+  execution context (via a `ContextVar`), so sharing a repository across
+  coroutines or threads is safe and nested blocks compose. The soft-delete
+  filter still applies on top of an override.
+
 ## [0.2.2] - 2026-06-22
 
 ### Added
@@ -57,6 +70,7 @@ All notable changes to this project are documented in this file.
   opt-in soft delete.
 - FastAPI pagination integration via `fastapi-pagination`.
 
+[0.2.3]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.3
 [0.2.2]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.2
 [0.2.1]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.1
 [0.2.0]: https://github.com/2u2s/fast-repository/releases/tag/v0.2.0
